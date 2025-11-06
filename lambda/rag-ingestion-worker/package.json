@@ -1,0 +1,22 @@
+{
+  "name": "rag-ingestion-worker",
+  "version": "1.0.0",
+  "description": "Lambda function for RAG document ingestion",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "openai": "^4.61.0",
+    "cheerio": "^1.0.0",
+    "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^20.11.30",
+    "@types/pdf-parse": "^1.1.4",
+    "prisma": "^6.19.0",
+    "typescript": "^5.5.4"
+  }
+}

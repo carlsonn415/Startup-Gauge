@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  cognitoSub   String?       @unique
+  projects     Project[]
+  subscription Subscription?
+  usageMeters  UsageMeter[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Project {
+  id            String          @id @default(cuid())
+  user          User            @relation(fields: [userId], references: [id])
+  userId        String
+  title         String
+  description   String?
+  analyses      Analysis[]
+  discoveryJobs DiscoveryJob[]
+  documentChunks DocumentChunk[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model Analysis {
+  id              String        @id @default(cuid())
+  project         Project       @relation(fields: [projectId], references: [id])
+  projectId       String
+  input           Json
+  output          Json?
+  model           String
+  promptVersion   PromptVersion @relation(fields: [promptVersionId], references: [id])
+  promptVersionId String
+  tokenUsage      Int?          // estimated tokens
+  costUsd         Decimal?      @db.Decimal(10, 4)
+  status          String        // pending | success | failed
+  createdAt       DateTime      @default(now())
+}
+
+model PromptVersion {
+  id                  String    @id @default(cuid())
+  name                String
+  systemPrompt        String
+  outputSchemaVersion Int
+  analyses            Analysis[]
+  createdAt           DateTime  @default(now())
+}
+
+model Subscription {
+  id                String   @id @default(cuid())
+  user              User     @relation(fields: [userId], references: [id])
+  userId            String   @unique
+  stripeCustomerId  String   @unique
+  stripeSubscriptionId String? @unique
+  stripePriceId     String?
+  status            String   // active | canceled | past_due | trialing
+  currentPeriodEnd  DateTime?
+  cancelAtPeriodEnd Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model UsageMeter {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+  period   String // YYYY-MM
+  included Int
+  consumed Int
+
+  @@unique([userId, period])
+}
+
+model DiscoveryJob {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  status      String // pending, processing, completed, failed
+  urlCount    Int
+  chunksCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id])
+  sourceUrl  String
+  chunkIndex Int
+  content    String   @db.Text
+  embedding  Unsupported("vector(1536)")?
+  metadata   Json // { title, category, snippet }
+  createdAt  DateTime @default(now())
+
+  @@index([projectId])
+  @@index([sourceUrl])
+}
+

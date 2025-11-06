@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: RAG Ingestion Worker Lambda
+
+Globals:
+  Function:
+    Timeout: 900  # 15 minutes max
+    MemorySize: 2048
+    Runtime: nodejs20.x
+
+Parameters:
+  DatabaseUrl:
+    Type: String
+    Description: Neon PostgreSQL connection string
+    NoEcho: true
+  OpenAIApiKey:
+    Type: String
+    Description: OpenAI API key for embeddings
+    NoEcho: true
+
+Resources:
+  RagIngestionWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rag-ingestion-worker
+      CodeUri: ./
+      Handler: index.handler
+      Environment:
+        Variables:
+          DATABASE_URL: !Ref DatabaseUrl
+          OPENAI_API_KEY: !Ref OpenAIApiKey
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+
+Outputs:
+  RagIngestionWorkerFunction:
+    Description: "RAG Ingestion Worker Lambda Function ARN"
+    Value: !GetAtt RagIngestionWorkerFunction.Arn
+  RagIngestionWorkerFunctionIamRole:
+    Description: "Implicit IAM Role created for function"
+    Value: !GetAtt RagIngestionWorkerFunctionRole.Arn
+
