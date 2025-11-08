@@ -52,52 +52,85 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  console.log("Handling checkout completed:", session.id);
-  const userId = session.metadata?.userId;
+  console.log("[Webhook] Handling checkout completed:", session.id);
+  console.log("[Webhook] Session metadata:", JSON.stringify(session.metadata, null, 2));
+  
+  let userId = session.metadata?.userId;
+  
+  // Fallback: try to get userId from customer metadata
+  if (!userId && session.customer) {
+    console.log("[Webhook] No userId in session metadata, checking customer metadata...");
+    try {
+      const customer = await stripe.customers.retrieve(session.customer as string);
+      if (customer && !customer.deleted && customer.metadata?.userId) {
+        userId = customer.metadata.userId;
+        console.log("[Webhook] Found userId in customer metadata:", userId);
+      }
+    } catch (err) {
+      console.error("[Webhook] Error retrieving customer:", err);
+    }
+  }
+
   if (!userId) {
-    console.error("No userId in session metadata");
+    console.error("[Webhook] No userId found in session or customer metadata. Cannot create subscription.");
+    console.error("[Webhook] Session customer:", session.customer);
+    console.error("[Webhook] Session subscription:", session.subscription);
     return;
   }
 
   const subscriptionId = session.subscription as string;
   const customerId = session.customer as string;
 
-  console.log("Creating subscription for user:", userId);
+  if (!subscriptionId) {
+    console.error("[Webhook] No subscription ID in checkout session");
+    return;
+  }
 
-  const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
-  const priceId = stripeSubscription.items.data[0]?.price.id;
-  const plan = getPlanByPriceId(priceId);
+  console.log("[Webhook] Creating subscription for user:", userId, "subscription:", subscriptionId);
 
-  console.log("Plan found:", plan?.name, "Price ID:", priceId);
+  try {
+    const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const priceId = stripeSubscription.items.data[0]?.price.id;
+    const plan = getPlanByPriceId(priceId);
 
-  await prisma.subscription.upsert({
-    where: { userId },
-    update: {
-      stripeSubscriptionId: subscriptionId,
-      stripePriceId: priceId,
-      status: stripeSubscription.status,
-      currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
-    },
-    create: {
-      userId,
-      stripeCustomerId: customerId,
-      stripeSubscriptionId: subscriptionId,
-      stripePriceId: priceId,
-      status: stripeSubscription.status,
-      currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
-    },
-  });
+    console.log("[Webhook] Plan found:", plan?.name, "Price ID:", priceId, "Status:", stripeSubscription.status);
 
-  console.log("Subscription upserted successfully");
-
-  // Initialize usage meter for current period
-  if (plan) {
-    const period = new Date().toISOString().slice(0, 7); // YYYY-MM
-    await prisma.usageMeter.upsert({
-      where: { userId_period: { userId, period } },
-      update: { included: plan.includedAnalyses },
-      create: { userId, period, included: plan.includedAnalyses, consumed: 0 },
+    await prisma.subscription.upsert({
+      where: { userId },
+      update: {
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscriptionId,
+        stripePriceId: priceId,
+        status: stripeSubscription.status,
+        currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
+        cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+      },
+      create: {
+        userId,
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscriptionId,
+        stripePriceId: priceId,
+        status: stripeSubscription.status,
+        currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
+        cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+      },
     });
+
+    console.log("[Webhook] Subscription upserted successfully");
+
+    // Initialize usage meter for current period
+    if (plan) {
+      const period = new Date().toISOString().slice(0, 7); // YYYY-MM
+      await prisma.usageMeter.upsert({
+        where: { userId_period: { userId, period } },
+        update: { included: plan.includedAnalyses },
+        create: { userId, period, included: plan.includedAnalyses, consumed: 0 },
+      });
+      console.log("[Webhook] Usage meter updated, limit:", plan.includedAnalyses);
+    }
+  } catch (err) {
+    console.error("[Webhook] Error creating subscription:", err);
+    throw err;
   }
 }
 

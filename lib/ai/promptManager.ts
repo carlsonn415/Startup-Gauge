@@ -23,11 +23,7 @@ export async function getOrCreateDefaultPrompt(): Promise<PromptConfig> {
     where: { name: "v1-default" },
   });
 
-  if (!version) {
-    version = await prisma.promptVersion.create({
-      data: {
-        name: "v1-default",
-        systemPrompt: `You are an expert startup consultant. Produce realistic, conservative estimates. You MUST return valid JSON matching this exact structure:
+  const fullPrompt = `You are an expert startup consultant. Produce realistic, conservative estimates. You MUST return valid JSON matching this exact structure:
 
 {
   "summary": "A 2-3 sentence summary of the business idea and its viability",
@@ -53,9 +49,22 @@ export async function getOrCreateDefaultPrompt(): Promise<PromptConfig> {
   "confidencePct": 75
 }
 
-Return ONLY valid JSON, no markdown, no code fences, no explanations.`,
+Return ONLY valid JSON, no markdown, no code fences, no explanations.`;
+
+  if (!version) {
+    version = await prisma.promptVersion.create({
+      data: {
+        name: "v1-default",
+        systemPrompt: fullPrompt,
         outputSchemaVersion: 1,
       },
+    });
+  } else if (version.systemPrompt.length < 200) {
+    // Update incomplete prompts (from old seed data)
+    console.log("Updating incomplete prompt version...");
+    version = await prisma.promptVersion.update({
+      where: { id: version.id },
+      data: { systemPrompt: fullPrompt },
     });
   }
 

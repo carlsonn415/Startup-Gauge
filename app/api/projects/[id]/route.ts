@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuthHeader } from "@/lib/auth/verifyJwt";
 import { prisma } from "@/lib/db/prisma";
+import { errorResponse, successResponse, handleApiError } from "@/lib/api/errors";
 
 export async function GET(
   req: NextRequest,
@@ -11,7 +12,7 @@ export async function GET(
     const auth = req.headers.get("authorization") || undefined;
     const payload = await verifyAuthHeader(auth);
     if (!payload) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return errorResponse("Unauthorized", 401, "UNAUTHORIZED");
     }
 
     const email = payload.email as string;
@@ -20,7 +21,7 @@ export async function GET(
     // Get user
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return NextResponse.json({ ok: false, error: "User not found" }, { status: 404 });
+      return errorResponse("User not found", 404, "USER_NOT_FOUND");
     }
 
     // Get project
@@ -34,29 +35,75 @@ export async function GET(
           orderBy: { createdAt: "desc" },
           take: 1,
         },
+        _count: {
+          select: {
+            documentChunks: true,
+          },
+        },
       },
     });
 
     if (!project) {
-      return NextResponse.json(
-        { ok: false, error: "Project not found" },
-        { status: 404 }
-      );
+      return errorResponse("Project not found", 404, "PROJECT_NOT_FOUND");
     }
 
-    return NextResponse.json({
-      ok: true,
-      project: {
-        id: project.id,
-        businessIdea: project.title, // Using title as businessIdea for compatibility
-        createdAt: project.createdAt,
-        latestAnalysis: project.analyses[0] || null,
-      },
+    return successResponse({
+      id: project.id,
+      title: project.title,
+      description: project.description,
+      businessIdea: project.title, // Using title as businessIdea for compatibility
+      status: project.status,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+      latestAnalysis: project.analyses[0] || null,
+      hasDocuments: project._count.documentChunks > 0,
     });
   } catch (err: unknown) {
-    console.error("Project fetch error:", err);
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return handleApiError(err);
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Auth required
+    const auth = req.headers.get("authorization") || undefined;
+    const payload = await verifyAuthHeader(auth);
+    if (!payload) {
+      return errorResponse("Unauthorized", 401, "UNAUTHORIZED");
+    }
+
+    const email = payload.email as string;
+    const { id } = params;
+
+    // Get user
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return errorResponse("User not found", 404, "USER_NOT_FOUND");
+    }
+
+    // Verify project exists and belongs to user
+    const project = await prisma.project.findFirst({
+      where: {
+        id,
+        userId: user.id,
+      },
+    });
+
+    if (!project) {
+      return errorResponse("Project not found", 404, "PROJECT_NOT_FOUND");
+    }
+
+    // Delete project (cascade deletes will handle related records)
+    await prisma.project.delete({
+      where: { id },
+    });
+
+    return successResponse({ message: "Project deleted successfully" });
+  } catch (err: unknown) {
+    return handleApiError(err);
   }
 }
 

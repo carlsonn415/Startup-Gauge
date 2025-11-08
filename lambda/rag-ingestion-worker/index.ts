@@ -4,7 +4,11 @@ import OpenAI from "openai";
 import * as cheerio from "cheerio";
 import pdfParse from "pdf-parse";
 
-const prisma = new PrismaClient();
+// Initialize Prisma Client with proper configuration for Lambda
+const prisma = new PrismaClient({
+  log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+});
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 interface LambdaEvent {
@@ -51,25 +55,37 @@ export const handler: Handler<LambdaEvent> = async (event) => {
         // Step 3: Generate embeddings (batch processing)
         const embeddings = await generateEmbeddings(chunks);
 
-        // Step 4: Store in database
-        const chunkRecords = chunks.map((chunk, index) => ({
-          projectId: event.projectId,
-          sourceUrl: urlData.url,
-          chunkIndex: index,
-          content: chunk,
-          embedding: embeddings[index] ? `[${embeddings[index].join(",")}]` : null,
-          metadata: {
-            title: urlData.title,
-            category: urlData.category,
-            relevanceScore: urlData.relevanceScore,
-            reason: urlData.reason,
-          },
-        }));
-
-        // Bulk insert
-        await prisma.documentChunk.createMany({
-          data: chunkRecords,
-        });
+        // Step 4: Store in database using raw SQL for embedding field (pgvector)
+        for (let idx = 0; idx < chunks.length; idx++) {
+          const chunk = chunks[idx];
+          const embedding = embeddings[idx];
+          
+          if (!embedding) {
+            console.warn(`No embedding for chunk ${idx}, skipping`);
+            continue;
+          }
+          
+          // Format embedding as pgvector array string
+          const embeddingVector = `[${embedding.join(",")}]`;
+          
+          // Use raw SQL to insert with pgvector embedding
+          await prisma.$executeRawUnsafe(
+            `INSERT INTO "DocumentChunk" 
+             ("id", "projectId", "sourceUrl", "chunkIndex", "content", "embedding", "metadata", "createdAt")
+             VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5::vector, $6::jsonb, NOW())`,
+            event.projectId,
+            urlData.url,
+            idx,
+            chunk,
+            embeddingVector,
+            JSON.stringify({
+              title: urlData.title,
+              category: urlData.category,
+              relevanceScore: urlData.relevanceScore,
+              reason: urlData.reason,
+            })
+          );
+        }
 
         totalChunks += chunks.length;
         console.log(`Stored ${chunks.length} chunks for ${urlData.url}`);

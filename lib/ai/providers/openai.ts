@@ -57,6 +57,11 @@ export class OpenAiProvider implements AiProvider {
     const userPrompt = promptParts.join("\n");
 
     const client = getClient();
+    
+    // Log the system prompt to debug
+    console.log("System prompt length:", systemPrompt.length);
+    console.log("System prompt preview:", systemPrompt.substring(0, 200));
+    
     const response = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -68,17 +73,28 @@ export class OpenAiProvider implements AiProvider {
     });
 
     const content = response.choices?.[0]?.message?.content ?? "{}";
+    console.log("OpenAI raw response:", content.substring(0, 500));
+    
     // Attempt to parse JSON even if wrapped in code fences
     const jsonText = content.replace(/^```(json)?/i, "").replace(/```$/i, "").trim();
     let parsed;
     try {
       parsed = JSON.parse(jsonText);
+      console.log("Parsed JSON keys:", Object.keys(parsed));
     } catch (parseError) {
       console.error("Failed to parse OpenAI response:", content);
       throw new Error(`Invalid JSON response from OpenAI: ${parseError instanceof Error ? parseError.message : "Unknown error"}`);
     }
     
-    const output = ViabilityOutputSchema.parse(parsed);
+    // Validate against schema
+    let output;
+    try {
+      output = ViabilityOutputSchema.parse(parsed);
+    } catch (validationError) {
+      console.error("Schema validation failed. Parsed data:", JSON.stringify(parsed, null, 2));
+      console.error("Validation error:", validationError);
+      throw new Error(`OpenAI response doesn't match expected schema: ${validationError instanceof Error ? validationError.message : "Unknown error"}`);
+    }
     const usage = response.usage;
     return {
       output,

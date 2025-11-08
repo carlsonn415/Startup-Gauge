@@ -88,3 +88,5 @@ typings/
 .dynamodb/
 
 biz-b6b7a6d9.plan.md
+
+lambda/.aws-sam/build.toml
