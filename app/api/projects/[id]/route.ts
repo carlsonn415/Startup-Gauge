@@ -34,6 +34,11 @@ export async function GET(
           orderBy: { createdAt: "desc" },
           take: 1,
         },
+        _count: {
+          select: {
+            documentChunks: true,
+          },
+        },
       },
     });
 
@@ -48,9 +53,14 @@ export async function GET(
       ok: true,
       project: {
         id: project.id,
+        title: project.title,
+        description: project.description,
         businessIdea: project.title, // Using title as businessIdea for compatibility
+        status: project.status,
         createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
         latestAnalysis: project.analyses[0] || null,
+        hasDocuments: project._count.documentChunks > 0,
       },
     });
   } catch (err: unknown) {

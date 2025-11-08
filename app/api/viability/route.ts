@@ -134,6 +134,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Mark project as completed
+    await prisma.project.update({
+      where: { id: project.id },
+      data: { status: "completed" },
+    });
+
     return successResponse(output, 200, {
       model,
       promptTokens,
