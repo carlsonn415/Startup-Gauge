@@ -26,20 +26,48 @@ export default function ProjectReportPage() {
         const session = await fetchAuthSession();
         const idToken = session.tokens?.idToken?.toString();
         
-        if (idToken) {
-          const res = await fetch(`/api/projects/${projectId}`, {
-            headers: { authorization: `Bearer ${idToken}` },
-          });
-          
-          if (res.ok) {
-            const data = await res.json();
-            setProject(data.project);
-            if (data.project.latestAnalysis?.output) {
-              setAnalysis(data.project.latestAnalysis.output);
-            }
-          }
+        if (!idToken) {
+          router.push("/");
+          return;
         }
-      } catch {
+
+        const res = await fetch(`/api/projects/${projectId}`, {
+          headers: { authorization: `Bearer ${idToken}` },
+        });
+        
+        if (res.ok) {
+          const response = await res.json();
+          if (response.ok && response.data) {
+            const project = response.data;
+            setProject(project);
+            if (project.latestAnalysis?.output) {
+              setAnalysis(project.latestAnalysis.output);
+            } else {
+              // No analysis found, but don't redirect - show the "no analysis" message
+              setAnalysis(null);
+            }
+          } else {
+            // API returned error - project not found or unauthorized
+            console.error("Failed to fetch project:", response.error);
+            if (response.error === "Project not found" || response.error === "Unauthorized") {
+              router.push("/");
+              return;
+            }
+            setAnalysis(null);
+          }
+        } else {
+          // HTTP error
+          const error = await res.json().catch(() => ({ error: "Failed to fetch project" }));
+          console.error("HTTP error:", error);
+          if (res.status === 404 || res.status === 401) {
+            router.push("/");
+            return;
+          }
+          setAnalysis(null);
+        }
+      } catch (err) {
+        // Auth error or other critical error
+        console.error("Error loading report:", err);
         router.push("/");
       } finally {
         setLoading(false);
@@ -103,6 +131,9 @@ export default function ProjectReportPage() {
             ${(analysis.marketSizeUsd / 1_000_000_000).toFixed(2)}B
           </p>
           <p className="text-sm text-gray-600 mt-1">Estimated market size</p>
+          <p className="text-sm text-gray-500 mt-2">
+            This represents the total addressable market (TAM) - the total revenue opportunity available if you captured 100% of the market. It helps you understand the potential scale of your business opportunity.
+          </p>
         </section>
 
         {/* Risks */}

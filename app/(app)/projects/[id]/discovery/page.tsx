@@ -76,9 +76,9 @@ export default function DiscoveryPage() {
           setJobStatus(data.job.status);
 
           if (data.job.status === "completed") {
-            alert(`Ingestion complete! ${data.job.chunksCount} chunks indexed.`);
+            // Analysis complete, user can continue
           } else if (data.job.status === "failed") {
-            alert("Ingestion failed. Please try again.");
+            alert("Analysis failed. Please try again.");
           }
         }
       } catch (err) {
@@ -134,9 +134,9 @@ export default function DiscoveryPage() {
     }
   }
 
-  async function handleIngest() {
+  async function handleAnalyze() {
     if (selectedUrls.size === 0) {
-      alert("Please select at least one URL to ingest");
+      alert("Please select at least one URL to analyze");
       return;
     }
 
@@ -147,7 +147,7 @@ export default function DiscoveryPage() {
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
-        alert("Please sign in to ingest URLs");
+        alert("Please sign in to analyze URLs");
         setIngesting(false);
         return;
       }
@@ -171,12 +171,11 @@ export default function DiscoveryPage() {
       if (data.ok) {
         setJobId(data.jobId);
         setJobStatus(data.status);
-        alert(`Ingestion started! Job ID: ${data.jobId}`);
       } else {
-        alert(data.error || "Failed to start ingestion");
+        alert(data.error || "Failed to start analysis");
       }
     } catch (err: any) {
-      console.error("Ingestion error:", err);
+      console.error("Analysis error:", err);
       alert(err.message);
     } finally {
       setIngesting(false);
@@ -259,7 +258,7 @@ export default function DiscoveryPage() {
           <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
             <p className="text-sm text-blue-900">
               📊 Discovered {urls.length} relevant sources. Select the ones you want to
-              analyze, then click "Ingest Selected URLs".
+              analyze, then click "Analyze Selected URLs".
             </p>
           </div>
 
@@ -286,7 +285,15 @@ export default function DiscoveryPage() {
                       />
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-sm truncate">{url.title}</h3>
-                        <p className="text-xs text-blue-600 truncate">{url.url}</p>
+                        <a 
+                          href={url.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 truncate hover:underline block"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {url.url}
+                        </a>
                         <p className="text-xs text-gray-600 mt-1">{url.reason}</p>
                         <span className="text-xs text-gray-500">
                           Relevance: {Math.round(url.relevanceScore * 100)}%
@@ -302,12 +309,12 @@ export default function DiscoveryPage() {
           <div className="flex gap-3">
             <button
               className="flex-1 rounded-md bg-black px-4 py-3 text-white hover:opacity-90 disabled:opacity-50"
-              onClick={handleIngest}
+              onClick={handleAnalyze}
               disabled={ingesting || selectedUrls.size === 0}
             >
               {ingesting
-                ? "Starting Ingestion..."
-                : `Ingest Selected URLs (${selectedUrls.size})`}
+                ? "Starting Analysis..."
+                : `Analyze Selected URLs (${selectedUrls.size})`}
             </button>
 
             <button
@@ -321,11 +328,12 @@ export default function DiscoveryPage() {
             </button>
           </div>
 
-          {jobStatus && (
+          {jobStatus && jobStatus !== "completed" && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
               <p className="text-sm text-yellow-900">
-                Job Status: <strong>{jobStatus}</strong>
-                {jobStatus === "processing" && " (polling for updates...)"}
+                {jobStatus === "processing" && "Analyzing selected resources... This may take a few minutes."}
+                {jobStatus === "pending" && "Analysis queued. Starting soon..."}
+                {jobStatus === "failed" && "Analysis failed. Please try again."}
               </p>
             </div>
           )}

@@ -39,17 +39,25 @@ export async function GET(req: NextRequest) {
       orderBy: { updatedAt: "desc" },
     });
 
-    return successResponse(projects.map((p) => ({
-      id: p.id,
-      title: p.title,
-      description: p.description,
-      status: p.status,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-      hasAnalysis: p.analyses.length > 0,
-      hasDocuments: p._count.documentChunks > 0,
-      latestJobStatus: p.discoveryJobs[0]?.status || null,
-    })));
+    return successResponse(projects.map((p) => {
+      const latestAnalysis = p.analyses[0];
+      const confidenceScore = latestAnalysis?.output && typeof latestAnalysis.output === 'object' && 'confidencePct' in latestAnalysis.output
+        ? (latestAnalysis.output as any).confidencePct
+        : null;
+
+      return {
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        status: p.status,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        hasAnalysis: p.analyses.length > 0,
+        hasDocuments: p._count.documentChunks > 0,
+        latestJobStatus: p.discoveryJobs[0]?.status || null,
+        confidenceScore,
+      };
+    }));
   } catch (err: unknown) {
     return handleApiError(err);
   }

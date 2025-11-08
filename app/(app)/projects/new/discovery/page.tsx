@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentUser, fetchAuthSession } from "aws-amplify/auth";
+import { getCurrentUser, fetchAuthSession, signInWithRedirect } from "aws-amplify/auth";
 import { configureAmplify } from "@/lib/auth/amplifyClient";
 
 interface DiscoveredUrl {
@@ -20,9 +20,9 @@ export default function NewProjectDiscoveryPage() {
   const [discovering, setDiscovering] = useState(false);
   const [urls, setUrls] = useState<DiscoveredUrl[]>([]);
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
-  const [ingesting, setIngesting] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
-  const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,14 +32,15 @@ export default function NewProjectDiscoveryPage() {
         await getCurrentUser();
         setCheckingAuth(false);
       } catch {
-        router.push("/");
+        // User is not authenticated, redirect to sign in
+        await signInWithRedirect();
       }
     })();
   }, [router]);
 
-  // Poll job status
+  // Poll analysis status
   useEffect(() => {
-    if (!jobId || jobStatus === "completed" || jobStatus === "failed") {
+    if (!jobId || analysisStatus === "completed" || analysisStatus === "failed") {
       return;
     }
 
@@ -56,24 +57,24 @@ export default function NewProjectDiscoveryPage() {
 
         if (res.ok) {
           const data = await res.json();
-          setJobStatus(data.job.status);
+          setAnalysisStatus(data.job.status);
 
           if (data.job.status === "completed") {
-            // Navigate to details page after ingestion completes
+            // Navigate to details page after analysis completes
             if (projectId) {
               router.push(`/projects/${projectId}/details`);
             }
           } else if (data.job.status === "failed") {
-            alert("Ingestion failed. Please try again.");
+            alert("Analysis failed. Please try again.");
           }
         }
       } catch (err) {
-        console.error("Failed to check job status:", err);
+        console.error("Failed to check analysis status:", err);
       }
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [jobId, jobStatus, projectId, router]);
+  }, [jobId, analysisStatus, projectId, router]);
 
   async function handleDiscover() {
     if (!businessIdea.trim()) {
@@ -141,25 +142,25 @@ export default function NewProjectDiscoveryPage() {
     }
   }
 
-  async function handleIngest() {
+  async function handleAnalyze() {
     if (!projectId) {
       alert("Project not created. Please discover URLs first.");
       return;
     }
 
     if (selectedUrls.size === 0) {
-      alert("Please select at least one URL to ingest");
+      alert("Please select at least one URL to analyze");
       return;
     }
 
-    setIngesting(true);
+    setAnalyzing(true);
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
         alert("Please sign in");
-        setIngesting(false);
+        setAnalyzing(false);
         return;
       }
 
@@ -181,15 +182,15 @@ export default function NewProjectDiscoveryPage() {
 
       if (data.ok) {
         setJobId(data.jobId);
-        setJobStatus(data.status);
+        setAnalysisStatus(data.status);
       } else {
-        alert(data.error || "Failed to start ingestion");
+        alert(data.error || "Failed to start analysis");
       }
     } catch (err: any) {
-      console.error("Ingestion error:", err);
+      console.error("Analysis error:", err);
       alert(err.message);
     } finally {
-      setIngesting(false);
+      setAnalyzing(false);
     }
   }
 
@@ -277,7 +278,7 @@ export default function NewProjectDiscoveryPage() {
           <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
             <p className="text-sm text-blue-900">
               📊 Discovered {urls.length} relevant sources. Select the ones you want to
-              analyze, then click "Ingest Selected URLs" to continue.
+              analyze, then click "Analyze Selected URLs" to continue.
             </p>
           </div>
 
@@ -304,7 +305,15 @@ export default function NewProjectDiscoveryPage() {
                       />
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-sm truncate">{url.title}</h3>
-                        <p className="text-xs text-blue-600 truncate">{url.url}</p>
+                        <a 
+                          href={url.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 truncate hover:underline block"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {url.url}
+                        </a>
                         <p className="text-xs text-gray-600 mt-1">{url.reason}</p>
                         <span className="text-xs text-gray-500">
                           Relevance: {Math.round(url.relevanceScore * 100)}%
@@ -320,14 +329,14 @@ export default function NewProjectDiscoveryPage() {
           <div className="flex gap-3">
             <button
               className="flex-1 rounded-md bg-black px-4 py-3 text-white hover:opacity-90 disabled:opacity-50"
-              onClick={handleIngest}
-              disabled={ingesting || selectedUrls.size === 0 || jobStatus === "processing"}
+              onClick={handleAnalyze}
+              disabled={analyzing || selectedUrls.size === 0 || analysisStatus === "processing"}
             >
-              {ingesting
-                ? "Starting Ingestion..."
-                : jobStatus === "processing"
-                ? "Processing..."
-                : `Ingest Selected URLs (${selectedUrls.size})`}
+              {analyzing
+                ? "Starting Analysis..."
+                : analysisStatus === "processing"
+                ? "Analyzing Resources..."
+                : `Analyze Selected URLs (${selectedUrls.size})`}
             </button>
 
             <button
@@ -341,11 +350,12 @@ export default function NewProjectDiscoveryPage() {
             </button>
           </div>
 
-          {jobStatus && (
+          {analysisStatus && analysisStatus !== "completed" && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
               <p className="text-sm text-yellow-900">
-                Job Status: <strong>{jobStatus}</strong>
-                {jobStatus === "processing" && " (this may take a few minutes...)"}
+                {analysisStatus === "processing" && "Analyzing selected resources... This may take a few minutes."}
+                {analysisStatus === "pending" && "Analysis queued. Starting soon..."}
+                {analysisStatus === "failed" && "Analysis failed. Please try again."}
               </p>
             </div>
           )}
