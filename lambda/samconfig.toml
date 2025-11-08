@@ -1,0 +1,13 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "rag-ingestion-stack"
+resolve_s3 = true
+s3_prefix = "rag-ingestion-stack"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "DatabaseUrl=\"postgresql://neondb_owner:npg_IQw6lxHMdfj8@ep-mute-sky-aeohzoyj.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require\""
+image_repositories = []
+
+[default.global.parameters]
+region = "us-east-2"

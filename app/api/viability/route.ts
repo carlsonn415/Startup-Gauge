@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { verifyAuthHeader } from "@/lib/auth/verifyJwt";
 import { checkAndIncrementUsage } from "@/lib/stripe/checkUsage";
 import { searchSimilarChunks, hasIngestedDocuments } from "@/lib/rag/vectorSearch";
+import { errorResponse, successResponse, handleApiError } from "@/lib/api/errors";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,13 +14,24 @@ export async function POST(req: NextRequest) {
     const payload = await verifyAuthHeader(auth);
     
     if (!payload || !payload.email) {
-      return NextResponse.json({ ok: false, error: "Unauthorized - Please sign in" }, { status: 401 });
+      return errorResponse("Unauthorized - Please sign in", 401, "UNAUTHORIZED");
     }
     
     const userEmail = payload.email as string;
     
-    const body = await req.json();
-    const input = ViabilityInputSchema.parse(body);
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return errorResponse("Invalid JSON in request body", 400, "INVALID_JSON");
+    }
+
+    let input;
+    try {
+      input = ViabilityInputSchema.parse(body);
+    } catch (err) {
+      return handleApiError(err);
+    }
     
     // Get or create user
     const user = await prisma.user.upsert({
@@ -31,14 +43,11 @@ export async function POST(req: NextRequest) {
     // Check usage limits
     const usageCheck = await checkAndIncrementUsage(user.id);
     if (!usageCheck.allowed) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "Usage limit exceeded",
-          limit: usageCheck.limit,
-          remaining: 0,
-        },
-        { status: 429 }
+      return errorResponse(
+        `You've reached your monthly limit of ${usageCheck.limit} analyses. Upgrade your plan for more analyses.`,
+        429,
+        "USAGE_LIMIT_EXCEEDED",
+        { limit: usageCheck.limit, remaining: 0 }
       );
     }
     
@@ -125,25 +134,20 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      ok: true,
-      data: output,
-      meta: {
-        model,
-        promptTokens,
-        completionTokens,
-        costUsd,
-        projectId: project.id,
-        analysisId: analysis.id,
-        usage: {
-          remaining: usageCheck.remaining,
-          limit: usageCheck.limit,
-        },
+    return successResponse(output, 200, {
+      model,
+      promptTokens,
+      completionTokens,
+      costUsd,
+      projectId: project.id,
+      analysisId: analysis.id,
+      usage: {
+        remaining: usageCheck.remaining,
+        limit: usageCheck.limit,
       },
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    return handleApiError(err);
   }
 }
 

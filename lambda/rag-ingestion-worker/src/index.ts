@@ -62,25 +62,33 @@ export const handler: Handler = async (event: LambdaPayload) => {
           const batch = chunks.slice(i, i + batchSize);
           const embeddings = await generateEmbeddings(openai, batch);
 
-          // Step 4: Store in database
-          const dbChunks = batch.map((chunkText, idx) => ({
-            projectId,
-            sourceUrl: urlData.url,
-            sourceTitle: urlData.title,
-            category: urlData.category,
-            chunkIndex: i + idx,
-            content: chunkText,
-            embedding: JSON.stringify(embeddings[idx]), // Store as JSON string
-            metadata: {
-              relevanceScore: urlData.relevanceScore,
-              reason: urlData.reason,
-              snippet: urlData.snippet,
-            },
-          }));
-
-          await prisma.documentChunk.createMany({
-            data: dbChunks,
-          });
+          // Step 4: Store in database using raw SQL for embedding field
+          for (let idx = 0; idx < batch.length; idx++) {
+            const chunkText = batch[idx];
+            const embedding = embeddings[idx];
+            
+            // Format embedding as pgvector array string
+            const embeddingVector = `[${embedding.join(",")}]`;
+            
+            // Use raw SQL to insert with pgvector embedding
+            await prisma.$executeRawUnsafe(
+              `INSERT INTO "DocumentChunk" 
+               ("id", "projectId", "sourceUrl", "chunkIndex", "content", "embedding", "metadata", "createdAt")
+               VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5::vector, $6::jsonb, NOW())`,
+              projectId,
+              urlData.url,
+              i + idx,
+              chunkText,
+              embeddingVector,
+              JSON.stringify({
+                title: urlData.title,
+                category: urlData.category,
+                relevanceScore: urlData.relevanceScore,
+                reason: urlData.reason,
+                snippet: urlData.snippet,
+              })
+            );
+          }
 
           totalChunks += batch.length;
           console.log(`Stored batch ${Math.floor(i / batchSize) + 1} (${batch.length} chunks)`);
