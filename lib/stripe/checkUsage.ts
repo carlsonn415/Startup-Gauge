@@ -32,7 +32,12 @@ export async function checkAndIncrementUsage(userId: string): Promise<{
   if (!meter) {
     console.log(`Creating new usage meter for user ${userId}, period ${period}, limit ${plan.includedAnalyses}`);
     meter = await prisma.usageMeter.create({
-      data: { userId, period, included: plan.includedAnalyses, consumed: 0 },
+      data: { 
+        userId, 
+        period, 
+        included: plan.includedAnalyses, 
+        consumed: 0,
+      },
     });
   } else if (meter.included !== plan.includedAnalyses) {
     // Plan changed - update the limit

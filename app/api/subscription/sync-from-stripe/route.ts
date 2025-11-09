@@ -173,7 +173,12 @@ export async function POST(req: NextRequest) {
           await prisma.usageMeter.upsert({
             where: { userId_period: { userId: user.id, period } },
             update: { included: plan.includedAnalyses },
-            create: { userId: user.id, period, included: plan.includedAnalyses, consumed: 0 },
+            create: { 
+              userId: user.id, 
+              period, 
+              included: plan.includedAnalyses, 
+              consumed: 0,
+            },
           });
         }
 
@@ -257,7 +262,12 @@ export async function POST(req: NextRequest) {
           await prisma.usageMeter.upsert({
             where: { userId_period: { userId: user.id, period } },
             update: { included: plan.includedAnalyses },
-            create: { userId: user.id, period, included: plan.includedAnalyses, consumed: 0 },
+            create: { 
+              userId: user.id, 
+              period, 
+              included: plan.includedAnalyses, 
+              consumed: 0,
+            },
           });
         }
 

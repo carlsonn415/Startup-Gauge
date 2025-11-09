@@ -270,7 +270,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       await prisma.usageMeter.upsert({
         where: { userId_period: { userId, period } },
         update: { included: plan.includedAnalyses },
-        create: { userId, period, included: plan.includedAnalyses, consumed: 0 },
+        create: { 
+          userId, 
+          period, 
+          included: plan.includedAnalyses, 
+          consumed: 0,
+        },
       });
       console.log("[Webhook] Usage meter updated, limit:", plan.includedAnalyses);
     }
@@ -333,7 +338,12 @@ async function handleInvoicePayment(invoice: Stripe.Invoice) {
   await prisma.usageMeter.upsert({
     where: { userId_period: { userId: sub.userId, period } },
     update: { included: plan.includedAnalyses, consumed: 0 },
-    create: { userId: sub.userId, period, included: plan.includedAnalyses, consumed: 0 },
+    create: { 
+      userId: sub.userId, 
+      period, 
+      included: plan.includedAnalyses, 
+      consumed: 0,
+    },
   });
 }
 
