@@ -43,6 +43,18 @@ export const PLANS: Record<string, Plan> = {
       "API access",
     ],
   },
+  "starter-to-pro-upgrade": {
+    id: "starter-to-pro-upgrade",
+    name: "Starter to Pro Upgrade",
+    priceMonthly: 70, // One-time upgrade price (difference between Pro $99 and Starter $29)
+    stripePriceId: process.env.STRIPE_PRICE_STARTER_TO_PRO_UPGRADE || "",
+    includedAnalyses: 75, // Additional credits added when upgrading
+    features: [
+      "Upgrade from Starter to Pro",
+      "Add 75 analysis credits",
+      "Pro plan features",
+    ],
+  },
 };
 
 export function getPlanByPriceId(priceId: string): Plan | null {

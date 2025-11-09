@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { PLANS } from "@/lib/stripe/plans";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { fetchAuthSession, getCurrentUser, signInWithRedirect } from "aws-amplify/auth";
 import { configureAmplify } from "@/lib/auth/amplifyClient";
 
 export default function PricingPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [currentPlanId, setCurrentPlanId] = useState<string>("free");
   const [loadingPlan, setLoadingPlan] = useState(true);
@@ -84,12 +86,21 @@ export default function PricingPage() {
   async function handleSubscribe(planId: string) {
     setLoading(planId);
     try {
-      const { fetchAuthSession } = await import("aws-amplify/auth");
+      // Check if user is authenticated
+      try {
+        await getCurrentUser();
+      } catch {
+        // Not authenticated, redirect to sign in
+        await signInWithRedirect();
+        setLoading(null);
+        return;
+      }
+
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
-        alert("Please sign in to subscribe");
+        await signInWithRedirect();
         setLoading(null);
         return;
       }
@@ -105,13 +116,15 @@ export default function PricingPage() {
 
       const data = await res.json();
       if (data.ok) {
-        if (data.upgraded) {
+        if (data.url) {
+          // Redirect to Stripe Checkout or invoice payment page
+          window.location.href = data.url;
+        } else if (data.upgraded) {
           // Subscription was updated directly, no need to redirect to Stripe
           alert(data.message || "Subscription upgraded successfully!");
           window.location.reload();
-        } else if (data.url) {
-          // Redirect to Stripe Checkout for new subscription
-          window.location.href = data.url;
+        } else {
+          alert(data.error || "Failed to subscribe");
         }
       } else {
         alert(data.error || "Failed to start checkout");
@@ -140,7 +153,9 @@ export default function PricingPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        {Object.values(PLANS).map((plan) => (
+        {Object.values(PLANS)
+          .filter((plan) => plan.id !== "starter-to-pro-upgrade") // Hide upgrade product from pricing page
+          .map((plan) => (
           <div
             key={plan.id}
             className="flex flex-col rounded-lg border bg-white p-6 shadow-sm"
@@ -160,8 +175,9 @@ export default function PricingPage() {
             </ul>
             <div className="mt-auto pt-6 space-y-2">
               {loadingPlan ? (
-                <button className="w-full rounded-md bg-gray-200 px-4 py-2 text-gray-700" disabled>
-                  Loading...
+                <button className="w-full rounded-md bg-gray-200 px-4 py-2 text-gray-700 flex items-center justify-center gap-2" disabled>
+                  <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  Processing...
                 </button>
               ) : plan.id === currentPlanId ? (
                 <>
@@ -194,7 +210,12 @@ export default function PricingPage() {
                   onClick={() => handleSubscribe(plan.id)}
                   disabled={loading === plan.id}
                 >
-                  {loading === plan.id ? "Loading..." : "Upgrade"}
+                  {loading === plan.id ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Processing...
+                    </span>
+                  ) : "Upgrade"}
                 </button>
               )}
             </div>

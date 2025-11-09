@@ -73,12 +73,14 @@ model Subscription {
 }
 
 model UsageMeter {
-  id       String @id @default(cuid())
-  userId   String
-  user     User   @relation(fields: [userId], references: [id])
-  period   String // YYYY-MM
-  included Int
-  consumed Int
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  period    String   // YYYY-MM
+  included  Int
+  consumed  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, period])
 }

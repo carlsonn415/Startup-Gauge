@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuthHeader } from "@/lib/auth/verifyJwt";
 import { prisma } from "@/lib/db/prisma";
 import { stripe } from "@/lib/stripe/client";
-import { getPlanByPriceId } from "@/lib/stripe/plans";
+import { getPlanByPriceId, PLANS } from "@/lib/stripe/plans";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api/errors";
 
 /**
@@ -32,7 +32,120 @@ export async function POST(req: NextRequest) {
       where: { userId: user.id },
     });
 
-    // If subscription exists in DB, verify it's still active in Stripe
+    // FIRST: Check for recent upgrade payments that might not have been processed by webhook
+    // This handles the case where webhooks aren't configured or failed
+    // This MUST run before regular sync to process upgrades
+    if (existingSubscription?.stripeCustomerId) {
+      console.log(`[Sync] Checking for recent upgrade payments...`);
+      
+      try {
+        // Get recent checkout sessions for this customer
+        const checkoutSessions = await stripe.checkout.sessions.list({
+          customer: existingSubscription.stripeCustomerId,
+          limit: 10,
+        });
+
+        // Find the most recent successful upgrade payment (within last hour)
+        const upgradeSession = checkoutSessions.data.find(
+          (session) => 
+            session.mode === "payment" &&
+            session.payment_status === "paid" &&
+            session.metadata?.upgrade === "true" &&
+            session.metadata?.upgradeType === "starter-to-pro" &&
+            session.created > (Date.now() / 1000 - 3600) // Within last hour
+        );
+
+        if (upgradeSession) {
+          console.log(`[Sync] Found recent upgrade payment: ${upgradeSession.id}`);
+          console.log(`[Sync] Processing upgrade manually (webhook may not have fired)...`);
+          
+          // Process the upgrade manually (same logic as webhook handler)
+          const proPlan = PLANS.pro;
+          if (proPlan.stripePriceId && existingSubscription.stripeSubscriptionId) {
+            try {
+              // Update subscription to Pro plan
+              const currentSubscription = await stripe.subscriptions.retrieve(
+                existingSubscription.stripeSubscriptionId
+              );
+              
+              // Only update if not already on Pro
+              if (currentSubscription.items.data[0]?.price.id !== proPlan.stripePriceId) {
+                console.log(`[Sync] Updating subscription to Pro plan...`);
+                const updatedSubscription = await stripe.subscriptions.update(
+                  existingSubscription.stripeSubscriptionId,
+                  {
+                    items: [{
+                      id: currentSubscription.items.data[0].id,
+                      price: proPlan.stripePriceId,
+                    }],
+                    proration_behavior: "none",
+                  }
+                );
+
+                // Update database
+                await prisma.subscription.update({
+                  where: { userId: user.id },
+                  data: {
+                    stripePriceId: proPlan.stripePriceId,
+                    status: updatedSubscription.status,
+                    currentPeriodEnd: new Date(updatedSubscription.current_period_end * 1000),
+                    cancelAtPeriodEnd: updatedSubscription.cancel_at_period_end || false,
+                  },
+                });
+
+                // Add 75 bonus credits
+                const period = new Date().toISOString().slice(0, 7);
+                const usageMeter = await prisma.usageMeter.findUnique({
+                  where: { userId_period: { userId: user.id, period } },
+                });
+
+                if (usageMeter) {
+                  await prisma.usageMeter.update({
+                    where: { id: usageMeter.id },
+                    data: {
+                      included: usageMeter.included + 75,
+                    },
+                  });
+                  console.log(`[Sync] Added 75 credits. New limit: ${usageMeter.included + 75}`);
+                } else {
+                  await prisma.usageMeter.create({
+                    data: {
+                      userId: user.id,
+                      period,
+                      included: proPlan.includedAnalyses + 75,
+                      consumed: 0,
+                    },
+                  });
+                  console.log(`[Sync] Created usage meter with ${proPlan.includedAnalyses + 75} credits`);
+                }
+
+                console.log(`[Sync] Successfully processed upgrade to Pro plan`);
+                
+                return successResponse({
+                  message: "Upgrade processed successfully",
+                  subscription: {
+                    status: updatedSubscription.status,
+                    plan: "pro",
+                  },
+                });
+              } else {
+                console.log(`[Sync] Subscription already on Pro plan`);
+              }
+            } catch (err) {
+              console.error(`[Sync] Error processing upgrade:`, err);
+              // Continue to regular sync if upgrade fails
+            }
+          }
+        } else {
+          console.log(`[Sync] No recent upgrade payments found`);
+        }
+      } catch (err) {
+        console.error(`[Sync] Error checking for upgrade payments:`, err);
+        // Continue to regular sync if check fails
+      }
+    }
+
+    // SECOND: If subscription exists in DB, verify it's still active in Stripe and sync
     if (existingSubscription?.stripeSubscriptionId) {
       console.log(`[Sync] Found existing subscription in DB: ${existingSubscription.stripeSubscriptionId}`);
       try {
@@ -54,7 +167,7 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        // Update usage meter
+        // Update usage meter (only if not already updated by upgrade processing)
         if (plan) {
           const period = new Date().toISOString().slice(0, 7);
           await prisma.usageMeter.upsert({

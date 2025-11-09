@@ -41,7 +41,7 @@ SELECT * FROM pg_extension WHERE extname = 'vector';
 ## Step 2: Run Database Migration
 
 ```bash
-cd /Users/nathan/projects/biz-viability
+cd /Users/nathan/projects/Business-Viability-Calculator
 npx prisma migrate dev --name add_rag_models
 npx prisma generate
 ```
