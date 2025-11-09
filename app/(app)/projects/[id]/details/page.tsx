@@ -18,6 +18,7 @@ export default function ProjectDetailsPage() {
   const [result, setResult] = useState<any>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [project, setProject] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     configureAmplify();
@@ -30,18 +31,50 @@ export default function ProjectDetailsPage() {
         const session = await fetchAuthSession();
         const idToken = session.tokens?.idToken?.toString();
         
-        if (idToken) {
+        if (!idToken) {
+          console.error("No ID token found - redirecting to home");
+          router.push("/");
+          return;
+        }
+        
+        try {
           const res = await fetch(`/api/projects/${projectId}`, {
             headers: { authorization: `Bearer ${idToken}` },
           });
           
           if (res.ok) {
             const data = await res.json();
-            setProject(data.project);
-            setIdea(data.project.businessIdea || "");
+            if (data.ok && data.data) {
+              setProject(data.data);
+              setIdea(data.data.businessIdea || data.data.title || "");
+              setError(null);
+            } else {
+              console.error("Invalid response format:", data);
+              setError("Failed to load project data. Please try again.");
+            }
+          } else {
+            // Handle different error status codes
+            if (res.status === 401) {
+              console.error("Unauthorized - redirecting to home");
+              router.push("/");
+              return;
+            } else if (res.status === 404) {
+              console.error("Project not found - redirecting to home");
+              router.push("/");
+              return;
+            } else {
+              const errorData = await res.json().catch(() => ({}));
+              console.error("Failed to fetch project:", res.status, errorData);
+              setError(`Failed to load project (${res.status}). Please try again.`);
+            }
           }
+        } catch (fetchError) {
+          console.error("Fetch error:", fetchError);
+          setError("Network error. Please check your connection and try again.");
         }
-      } catch {
+      } catch (authError) {
+        console.error("Authentication error:", authError);
+        // Only redirect on authentication errors
         router.push("/");
       }
     })();
@@ -112,6 +145,22 @@ export default function ProjectDetailsPage() {
           Provide additional details about your business idea to generate a comprehensive viability report
         </p>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <p className="text-sm text-red-900">{error}</p>
+          <button
+            onClick={() => {
+              setError(null);
+              // Retry loading the project
+              window.location.reload();
+            }}
+            className="mt-2 text-sm text-red-700 underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       <form className="space-y-4">
         <div>

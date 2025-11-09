@@ -25,6 +25,7 @@ export async function GET(
     }
 
     // Get project
+    // Note: Using findFirst instead of findUnique since we're filtering by both id and userId
     const project = await prisma.project.findFirst({
       where: {
         id,
@@ -41,6 +42,9 @@ export async function GET(
           },
         },
       },
+    }).catch((err) => {
+      console.error(`[API] Error fetching project ${id} for user ${user.id}:`, err);
+      throw err;
     });
 
     if (!project) {
