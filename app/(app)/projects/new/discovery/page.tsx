@@ -129,7 +129,7 @@ export default function NewProjectDiscoveryPage() {
 
       if (data.ok) {
         setUrls(data.urls);
-        const allUrls = new Set(data.urls.map((u: DiscoveredUrl) => u.url));
+        const allUrls = new Set<string>(data.urls.map((u: DiscoveredUrl) => u.url));
         setSelectedUrls(allUrls);
       } else {
         alert(data.error || "Failed to discover URLs");
