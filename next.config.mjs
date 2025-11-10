@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Explicitly expose DATABASE_URL to Next.js runtime
+  env: {
+    DATABASE_URL: process.env.DATABASE_URL ?? "",
+  },
   // Security headers
   async headers() {
     return [
