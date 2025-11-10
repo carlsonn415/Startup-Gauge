@@ -15,9 +15,9 @@ Before deploying, ensure you have:
 
 - `DATABASE_URL` - Your PostgreSQL connection string (from Neon)
 - `OPENAI_API_KEY` - Your OpenAI API key for embeddings
-- `AWS_ACCESS_KEY_ID` - AWS access key (for Next.js to invoke Lambda)
-- `AWS_SECRET_ACCESS_KEY` - AWS secret key
-- `AWS_REGION` - AWS region (e.g., `us-east-2`)
+- `IAM_AWS_ACCESS_KEY_ID` - AWS access key (for Next.js to invoke Lambda)
+- `IAM_AWS_SECRET_ACCESS_KEY` - AWS secret key
+- `IAM_AWS_REGION` - AWS region (e.g., `us-east-2`)
 - `RAG_LAMBDA_FUNCTION_NAME` - Lambda function name (default: `rag-ingestion-worker`)
 - `BRAVE_API_KEY` - Brave Search API key
 
@@ -67,9 +67,9 @@ Add these to your `.env` file:
 
 ```env
 RAG_LAMBDA_FUNCTION_NAME=rag-ingestion-worker
-AWS_ACCESS_KEY_ID=<your-access-key>
-AWS_SECRET_ACCESS_KEY=<your-secret-key>
-AWS_REGION=us-east-2
+IAM_AWS_ACCESS_KEY_ID=<your-access-key>
+IAM_AWS_SECRET_ACCESS_KEY=<your-secret-key>
+IAM_AWS_REGION=us-east-2
 BRAVE_API_KEY=<your-brave-api-key>
 ```
 

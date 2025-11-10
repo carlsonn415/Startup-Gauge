@@ -160,9 +160,9 @@ DATABASE_URL="postgresql://user:pass@host.neon.tech/db?sslmode=require"
 OPENAI_API_KEY="sk-..."
 
 # AWS (for Lambda invocation)
-AWS_ACCESS_KEY_ID="AKIA..."
-AWS_SECRET_ACCESS_KEY="..."
-AWS_REGION="us-east-2"
+IAM_AWS_ACCESS_KEY_ID="AKIA..."
+IAM_AWS_SECRET_ACCESS_KEY="..."
+IAM_AWS_REGION="us-east-2"
 RAG_LAMBDA_FUNCTION_NAME="rag-ingestion-worker"
 
 # Brave Search

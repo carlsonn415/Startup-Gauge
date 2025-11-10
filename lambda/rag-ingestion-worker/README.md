@@ -48,9 +48,9 @@ Add these to your Next.js `.env` file:
 
 ```env
 # AWS Lambda
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
+IAM_AWS_REGION=us-east-1
+IAM_AWS_ACCESS_KEY_ID=your_access_key
+IAM_AWS_SECRET_ACCESS_KEY=your_secret_key
 ```
 
 ## How It Works

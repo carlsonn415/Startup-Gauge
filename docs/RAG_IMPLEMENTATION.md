@@ -136,9 +136,9 @@ OPENAI_API_KEY=sk-...
 
 # New for RAG:
 BRAVE_API_KEY=BSA...                                   # Brave Search API key
-AWS_ACCESS_KEY_ID=AKIA...                              # AWS credentials
-AWS_SECRET_ACCESS_KEY=...                              # AWS credentials
-AWS_REGION=us-east-2                                   # AWS region
+IAM_AWS_ACCESS_KEY_ID=AKIA...                          # AWS credentials
+IAM_AWS_SECRET_ACCESS_KEY=...                          # AWS credentials
+IAM_AWS_REGION=us-east-2                               # AWS region
 RAG_LAMBDA_FUNCTION_NAME=rag-ingestion-worker          # Lambda function name
 ```
 
@@ -154,7 +154,7 @@ RAG_LAMBDA_FUNCTION_NAME=rag-ingestion-worker          # Lambda function name
 1. Create an IAM user in AWS Console
 2. Attach policies: `AWSLambdaRole` or custom Lambda invoke policy
 3. Generate access keys
-4. Add to `.env` as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+4. Add to `.env` as `IAM_AWS_ACCESS_KEY_ID` and `IAM_AWS_SECRET_ACCESS_KEY`
 
 ### 3. Deploy Lambda Function
 ```bash

@@ -145,9 +145,9 @@ Add these to `/Users/nathan/projects/biz-viability/.env`:
 
 ```env
 # AWS Lambda
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
+IAM_AWS_REGION=us-east-1
+IAM_AWS_ACCESS_KEY_ID=your_access_key
+IAM_AWS_SECRET_ACCESS_KEY=your_secret_key
 
 # Brave Search
 BRAVE_SEARCH_API_KEY=your_brave_api_key

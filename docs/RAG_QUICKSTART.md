@@ -35,9 +35,9 @@ Get your RAG (Retrieval-Augmented Generation) system up and running in under 30 
 9. **Copy the Access Key ID and Secret Access Key** (you won't see them again!)
 10. Add to `.env`:
     ```env
-    AWS_ACCESS_KEY_ID=AKIA...
-    AWS_SECRET_ACCESS_KEY=...
-    AWS_REGION=us-east-2
+    IAM_AWS_ACCESS_KEY_ID=AKIA...
+    IAM_AWS_SECRET_ACCESS_KEY=...
+    IAM_AWS_REGION=us-east-2
     ```
 
 ### Option B: Use AWS CLI (if already configured)
@@ -48,7 +48,7 @@ If you already have AWS CLI configured, you can use those credentials:
 cat ~/.aws/credentials
 ```
 
-Copy the `aws_access_key_id` and `aws_secret_access_key` to your `.env`.
+Copy the `aws_access_key_id` and `aws_secret_access_key` to your `.env` as `IAM_AWS_ACCESS_KEY_ID` and `IAM_AWS_SECRET_ACCESS_KEY`.
 
 ## Step 3: Deploy Lambda Function (10 minutes)
 
