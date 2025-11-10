@@ -19,6 +19,8 @@ const DiscoveryResponseSchema = z.object({
   urls: z.array(DiscoveredUrlSchema),
 });
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     // Auth required

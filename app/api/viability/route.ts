@@ -7,6 +7,8 @@ import { checkAndIncrementUsage } from "@/lib/stripe/checkUsage";
 import { searchSimilarChunks, hasIngestedDocuments } from "@/lib/rag/vectorSearch";
 import { errorResponse, successResponse, handleApiError } from "@/lib/api/errors";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     // Always require auth for usage tracking

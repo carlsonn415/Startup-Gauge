@@ -9,6 +9,8 @@ import { successResponse, errorResponse, handleApiError } from "@/lib/api/errors
  * Manually sync subscription from Stripe to database
  * This is a fallback when webhooks fail or aren't configured
  */
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const auth = req.headers.get("authorization") || undefined;

@@ -4,6 +4,8 @@ import { PLANS } from "@/lib/stripe/plans";
 import { prisma } from "@/lib/db/prisma";
 import { verifyAuthHeader } from "@/lib/auth/verifyJwt";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     // Auth required for checkout

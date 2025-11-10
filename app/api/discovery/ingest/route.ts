@@ -11,6 +11,8 @@ const lambdaClient = new LambdaClient({
   },
 });
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     // Auth required

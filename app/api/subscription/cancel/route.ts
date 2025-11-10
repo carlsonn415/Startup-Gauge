@@ -3,6 +3,8 @@ import { stripe } from "@/lib/stripe/client";
 import { prisma } from "@/lib/db/prisma";
 import { verifyAuthHeader } from "@/lib/auth/verifyJwt";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const auth = req.headers.get("authorization") || undefined;

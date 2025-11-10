@@ -3,6 +3,8 @@ import { verifyAuthHeader } from "@/lib/auth/verifyJwt";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, successResponse, handleApiError } from "@/lib/api/errors";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }

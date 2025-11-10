@@ -77,6 +77,7 @@ NEXT_PUBLIC_AMPLIFY_REGION=us-east-2
 NEXT_PUBLIC_USER_POOL_ID=us-east-2_...
 NEXT_PUBLIC_USER_POOL_CLIENT_ID=...
 NEXT_PUBLIC_COGNITO_DOMAIN=your-prefix.auth.us-east-2.amazoncognito.com
+NEXT_PUBLIC_APP_URL=https://your-amplify-url.amplifyapp.com
 ```
 
 **Important Notes:**
@@ -116,6 +117,7 @@ See `.env.example` for the complete list. Here's what each does:
 | `NEXT_PUBLIC_USER_POOL_ID` | Cognito User Pool ID | AWS Cognito |
 | `NEXT_PUBLIC_USER_POOL_CLIENT_ID` | Cognito App Client ID | AWS Cognito |
 | `NEXT_PUBLIC_COGNITO_DOMAIN` | Cognito domain | AWS Cognito |
+| `NEXT_PUBLIC_APP_URL` | Application URL for OAuth redirects | Your Amplify URL or custom domain |
 
 ### Environment Variable Validation
 

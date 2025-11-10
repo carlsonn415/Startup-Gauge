@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db/prisma";
 import { verifyAuthHeader } from "@/lib/auth/verifyJwt";
 import { getPlanByPriceId, PLANS } from "@/lib/stripe/plans";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const auth = req.headers.get("authorization") || undefined;

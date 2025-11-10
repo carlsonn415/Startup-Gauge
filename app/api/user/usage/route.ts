@@ -5,6 +5,8 @@ import { PLANS } from "@/lib/stripe/plans";
 import { getPlanByPriceId } from "@/lib/stripe/plans";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api/errors";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const auth = req.headers.get("authorization") || undefined;
