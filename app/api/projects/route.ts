@@ -106,6 +106,12 @@ export async function POST(req: NextRequest) {
       createdAt: project.createdAt,
     }, 201);
   } catch (err: unknown) {
+    // Log the full error for debugging
+    console.error("[API] Error creating project:", err);
+    if (err instanceof Error) {
+      console.error("[API] Error message:", err.message);
+      console.error("[API] Error stack:", err.stack);
+    }
     return handleApiError(err);
   }
 }
