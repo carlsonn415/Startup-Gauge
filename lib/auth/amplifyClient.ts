@@ -17,8 +17,11 @@ function getRedirectUrls(): string[] {
     return [];
   }
 
-  // Only return the base URL - Cognito will match it against the wildcard pattern configured in AWS Console
-  return [baseUrl];
+  // Return both the base URL and with wildcard for Cognito compatibility
+  return [
+    baseUrl,
+    `${baseUrl}/*`,
+  ];
 }
 
 let isConfigured = false;
