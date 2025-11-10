@@ -19,7 +19,7 @@ export default function AuthButtons() {
         
         // idToken is already parsed in Amplify v6
         const claims = idToken?.payload || {};
-        const userEmail = claims.email || user?.username || null;
+        const userEmail = (typeof claims.email === 'string' ? claims.email : null) || user?.username || null;
         
         console.log("Auth state:", { user: user?.username, email: userEmail, claims });
         setEmail(userEmail);
