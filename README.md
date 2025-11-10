@@ -244,17 +244,29 @@ See [prisma/schema.prisma](prisma/schema.prisma) for full schema.
 
 ## 🚢 Deployment
 
+### Quick Start
+
+See [docs/AMPLIFY_QUICKSTART.md](docs/AMPLIFY_QUICKSTART.md) for a 15-minute deployment guide.
+
+### Full Deployment Guide
+
+Complete deployment instructions are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), including:
+- AWS Amplify Hosting setup
+- Environment variable configuration
+- AWS Cognito authentication setup
+- Stripe webhook configuration
+- Lambda deployment
+- CI/CD pipeline setup
+- Monitoring and observability
+
 ### AWS Amplify Hosting
 
 1. **Connect GitHub** repository in Amplify console
-2. **Configure build settings:**
-   - Build command: `npm ci && npm run build`
-   - Start command: `npm start`
-3. **Add environment variables** from `.env`
-4. **Enable Cognito Auth** via Amplify Gen 2
-5. **Deploy** - Automatic on git push
+2. **Configure build settings** (auto-detected from `amplify.yml`)
+3. **Add environment variables** from `.env.example`
+4. **Deploy** - Automatic on git push to main branch
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions.
+**See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions.**
 
 ---
 
@@ -262,6 +274,9 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions.
 
 - **[Architecture Overview](docs/ARCHITECTURE.md)** - System design and data flows
 - **[API Reference](docs/API_REFERENCE.md)** - Complete API endpoint documentation
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Complete AWS Amplify deployment instructions
+- **[Amplify Quick Start](docs/AMPLIFY_QUICKSTART.md)** - 15-minute deployment guide
+- **[Monitoring Guide](docs/MONITORING.md)** - Production monitoring and observability
 - **[RAG Setup Guide](docs/RAG_QUICKSTART.md)** - Lambda deployment walkthrough
 - **[RAG Implementation](docs/RAG_IMPLEMENTATION.md)** - Technical deep dive
 
