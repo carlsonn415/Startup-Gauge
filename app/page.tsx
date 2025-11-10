@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { getCurrentUser, fetchAuthSession, signInWithRedirect } from "aws-amplify/auth";
 import { configureAmplify } from "@/lib/auth/amplifyClient";
 
@@ -18,8 +18,52 @@ interface Project {
   confidenceScore: number | null;
 }
 
-export default function HomePage() {
+function SearchParamsHandler({ onSuccess }: { onSuccess: () => void }) {
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("success") === "true") {
+      window.history.replaceState({}, "", "/");
+      onSuccess();
+      
+      // Sync subscription from Stripe after successful checkout
+      // This is a fallback in case webhooks aren't working
+      (async () => {
+        try {
+          const session = await fetchAuthSession();
+          const idToken = session.tokens?.idToken?.toString();
+          
+          if (idToken) {
+            console.log("Syncing subscription from Stripe...");
+            const res = await fetch("/api/subscription/sync-from-stripe", {
+              method: "POST",
+              headers: { authorization: `Bearer ${idToken}` },
+            });
+            
+            if (res.ok) {
+              const data = await res.json();
+              console.log("Subscription sync result:", data);
+              if (data.ok && data.data?.subscription) {
+                // Reload to refresh UI with new subscription
+                setTimeout(() => {
+                  window.location.reload();
+                }, 1000);
+              }
+            } else {
+              console.error("Failed to sync subscription:", await res.text());
+            }
+          }
+        } catch (err) {
+          console.error("Error syncing subscription:", err);
+        }
+      })();
+    }
+  }, [searchParams, onSuccess]);
+
+  return null;
+}
+
+export default function HomePage() {
   const router = useRouter();
   const [showSuccess, setShowSuccess] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -61,45 +105,10 @@ export default function HomePage() {
     })();
   }, []);
 
-  useEffect(() => {
-    if (searchParams.get("success") === "true") {
-      setShowSuccess(true);
-      window.history.replaceState({}, "", "/");
-      setTimeout(() => setShowSuccess(false), 5000);
-      
-      // Sync subscription from Stripe after successful checkout
-      // This is a fallback in case webhooks aren't working
-      (async () => {
-        try {
-          const session = await fetchAuthSession();
-          const idToken = session.tokens?.idToken?.toString();
-          
-          if (idToken) {
-            console.log("Syncing subscription from Stripe...");
-            const res = await fetch("/api/subscription/sync-from-stripe", {
-              method: "POST",
-              headers: { authorization: `Bearer ${idToken}` },
-            });
-            
-            if (res.ok) {
-              const data = await res.json();
-              console.log("Subscription sync result:", data);
-              if (data.ok && data.data?.subscription) {
-                // Reload to refresh UI with new subscription
-                setTimeout(() => {
-                  window.location.reload();
-                }, 1000);
-              }
-            } else {
-              console.error("Failed to sync subscription:", await res.text());
-            }
-          }
-        } catch (err) {
-          console.error("Error syncing subscription:", err);
-        }
-      })();
-    }
-  }, [searchParams]);
+  const handleSuccess = () => {
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 5000);
+  };
 
   function handleProjectClick(project: Project) {
     if (project.status === "completed" && project.hasAnalysis) {
@@ -160,6 +169,9 @@ export default function HomePage() {
   if (!checkingAuth && !loading && !isAuthenticated) {
     return (
       <main className="space-y-16">
+        <Suspense fallback={null}>
+          <SearchParamsHandler onSuccess={handleSuccess} />
+        </Suspense>
         {showSuccess && (
           <div className="max-w-4xl mx-auto px-6 pt-6">
             <div className="rounded-md bg-green-50 border border-green-200 p-4">
@@ -367,6 +379,9 @@ export default function HomePage() {
   // Show project list for authenticated users
   return (
     <main className="max-w-4xl mx-auto space-y-6 p-6">
+      <Suspense fallback={null}>
+        <SearchParamsHandler onSuccess={handleSuccess} />
+      </Suspense>
       {showSuccess && (
         <div className="rounded-md bg-green-50 border border-green-200 p-4">
           <p className="text-green-800 font-medium">
