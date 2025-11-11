@@ -17,9 +17,11 @@ function getRedirectUrls(): string[] {
     return [];
   }
 
-  // Return ONLY the base URL (no wildcard)
-  // The wildcard is only needed in Cognito console, not in Amplify SDK config
-  return [baseUrl];
+  // Return both the base URL and with wildcard for Cognito compatibility
+  return [
+    baseUrl,
+    `${baseUrl}/*`,
+  ];
 }
 
 let isConfigured = false;
