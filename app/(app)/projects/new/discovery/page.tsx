@@ -240,6 +240,16 @@ export default function NewProjectDiscoveryPage() {
     setSelectedUrls(newSelected);
   }
 
+  function toggleAllUrls() {
+    if (selectedUrls.size === urls.length) {
+      // Unselect all
+      setSelectedUrls(new Set());
+    } else {
+      // Select all
+      setSelectedUrls(new Set(urls.map((u) => u.url)));
+    }
+  }
+
   function getCategoryIcon(category: string) {
     switch (category) {
       case "competitor":
@@ -380,14 +390,23 @@ export default function NewProjectDiscoveryPage() {
 
           <div className="flex gap-3">
             <button
+              className="rounded-md border border-gray-300 px-4 py-3 hover:bg-gray-50 text-sm"
+              onClick={toggleAllUrls}
+            >
+              {selectedUrls.size === urls.length ? "Unselect All" : "Select All"}
+            </button>
+          </div>
+
+          <div className="flex gap-3">
+            <button
               className="flex-1 rounded-md bg-black px-4 py-3 text-white hover:opacity-90 disabled:opacity-50"
               onClick={handleAnalyze}
               disabled={analyzing || selectedUrls.size === 0 || analysisStatus === "processing"}
             >
               {analyzing
-                ? "Starting Analysis..."
+                ? "Analyzing selected resources... This may take a few minutes."
                 : analysisStatus === "processing"
-                ? "Analyzing Resources..."
+                ? "Analyzing selected resources... This may take a few minutes."
                 : `Analyze Selected URLs (${selectedUrls.size})`}
             </button>
 
@@ -402,12 +421,10 @@ export default function NewProjectDiscoveryPage() {
             </button>
           </div>
 
-          {analysisStatus && analysisStatus !== "completed" && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-              <p className="text-sm text-yellow-900">
-                {analysisStatus === "processing" && "Analyzing selected resources... This may take a few minutes."}
-                {analysisStatus === "pending" && "Analysis queued. Starting soon..."}
-                {analysisStatus === "failed" && "Analysis failed. Please try again."}
+          {analysisStatus && analysisStatus === "failed" && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <p className="text-sm text-red-900">
+                Analysis failed. Please try again.
               </p>
             </div>
           )}

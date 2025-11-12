@@ -438,8 +438,7 @@ export default function HomePage() {
       
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Startup Gauge</h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-xl text-gray-600">
             Analyze the viability of your business ideas with AI-powered market research
           </p>
         </div>
