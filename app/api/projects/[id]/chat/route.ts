@@ -131,16 +131,17 @@ IMPORTANT GUIDELINES:
       ``,
     ];
 
-    if (latestAnalysis?.output) {
-      promptParts.push(
-        `--- Report Summary ---`,
-        `Business Idea: ${project.title}`,
-        `Market Size: $${latestAnalysis.output.marketSizeUsd?.toLocaleString() || 'N/A'}`,
-        `Confidence Score: ${latestAnalysis.output.confidencePct || 'N/A'}%`,
-        `Key Risks: ${latestAnalysis.output.risks?.slice(0, 3).map((r: any) => typeof r === 'string' ? r : r.description).join('; ') || 'N/A'}`,
-        ``,
-      );
-    }
+        if (latestAnalysis?.output) {
+          const output = latestAnalysis.output as any;
+          promptParts.push(
+            `--- Report Summary ---`,
+            `Business Idea: ${project.title}`,
+            `Market Size: $${output.marketSizeUsd?.toLocaleString() || 'N/A'}`,
+            `Confidence Score: ${output.confidencePct || 'N/A'}%`,
+            `Key Risks: ${output.risks?.slice(0, 3).map((r: any) => typeof r === 'string' ? r : r.description).join('; ') || 'N/A'}`,
+            ``,
+          );
+        }
 
     if (hasRagData && ragContext) {
       promptParts.push(
