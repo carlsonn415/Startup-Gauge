@@ -18,6 +18,7 @@ function SearchParamsHandler({ onSuccess }: { onSuccess: () => void }) {
       
       // Sync subscription from Stripe after successful checkout
       // This is a fallback in case webhooks aren't working
+      // Note: We don't reload the page - the banner will show and disappear automatically
       (async () => {
         try {
           const session = await fetchAuthSession();
@@ -33,12 +34,8 @@ function SearchParamsHandler({ onSuccess }: { onSuccess: () => void }) {
             if (res.ok) {
               const data = await res.json();
               console.log("Subscription sync result:", data);
-              if (data.ok && data.data?.subscription) {
-                // Reload to refresh UI with new subscription
-                setTimeout(() => {
-                  window.location.reload();
-                }, 1000);
-              }
+              // Dispatch event to refresh subscription info in AuthButtons
+              window.dispatchEvent(new CustomEvent('subscription-updated'));
             } else {
               console.error("Failed to sync subscription:", await res.text());
             }

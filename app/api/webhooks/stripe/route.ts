@@ -30,18 +30,13 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log(`[Webhook] Checkout session completed. Mode: ${session.mode}, Payment status: ${session.payment_status}`);
         
         // Handle one-time payments (like upgrades)
         if (session.mode === "payment" && session.metadata?.upgrade === "true") {
-          console.log("[Webhook] Detected upgrade payment, calling handleUpgradePayment");
           await handleUpgradePayment(session);
         } else if (session.mode === "subscription") {
-          // Handle subscription checkout (existing logic)
-          console.log("[Webhook] Detected subscription checkout, calling handleCheckoutCompleted");
+          // Handle subscription checkout
           await handleCheckoutCompleted(session);
-        } else {
-          console.log(`[Webhook] Unhandled checkout session mode: ${session.mode}`);
         }
         break;
       }
@@ -70,45 +65,29 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleUpgradePayment(session: Stripe.Checkout.Session) {
-  console.log("[Webhook] Handling upgrade payment:", session.id);
-  console.log("[Webhook] Session mode:", session.mode);
-  console.log("[Webhook] Session metadata:", JSON.stringify(session.metadata, null, 2));
-  console.log("[Webhook] Session payment_status:", session.payment_status);
-  
   let userId = session.metadata?.userId;
-  if (!userId) {
-    console.error("[Webhook] No userId in upgrade session metadata");
-    // Try to get userId from customer metadata as fallback
-    if (session.customer) {
-      try {
-        const customer = await stripe.customers.retrieve(session.customer as string);
-        if (customer && !customer.deleted && customer.metadata?.userId) {
-          userId = customer.metadata.userId;
-          console.log("[Webhook] Found userId in customer metadata:", userId);
+    if (!userId) {
+      // Try to get userId from customer metadata as fallback
+      if (session.customer) {
+        try {
+          const customer = await stripe.customers.retrieve(session.customer as string);
+          if (customer && !customer.deleted && customer.metadata?.userId) {
+            userId = customer.metadata.userId;
+          }
+        } catch (err) {
+          console.error("[Webhook] Error retrieving customer:", err);
         }
-      } catch (err) {
-        console.error("[Webhook] Error retrieving customer:", err);
+      }
+      
+      if (!userId) {
+        console.error("[Webhook] Cannot proceed without userId");
+        return;
       }
     }
-    
-    if (!userId) {
-      console.error("[Webhook] Cannot proceed without userId");
-      return;
-    }
-  }
 
   const upgradeType = session.metadata?.upgradeType;
   const currentSubscriptionId = session.metadata?.currentSubscriptionId;
-  const additionalCredits = parseInt(session.metadata?.additionalCredits || "0");
   const targetPlanId = session.metadata?.planId;
-
-  console.log("[Webhook] Upgrade details:", {
-    upgradeType,
-    currentSubscriptionId,
-    additionalCredits,
-    targetPlanId,
-    userId,
-  });
 
   if (upgradeType === "starter-to-pro" && currentSubscriptionId && targetPlanId === "pro") {
     try {
@@ -118,70 +97,66 @@ async function handleUpgradePayment(session: Stripe.Checkout.Session) {
         return;
       }
 
-      // Update subscription to Pro plan
       const proPlan = PLANS.pro;
       if (!proPlan.stripePriceId) {
         throw new Error("Pro plan price ID not configured");
       }
 
-      console.log(`[Webhook] Retrieving subscription ${currentSubscriptionId}`);
-      const currentSubscription = await stripe.subscriptions.retrieve(currentSubscriptionId);
-      console.log(`[Webhook] Current subscription price: ${currentSubscription.items.data[0]?.price.id}`);
+      const customerId = session.customer as string;
       
-      console.log(`[Webhook] Updating subscription to Pro plan (${proPlan.stripePriceId})`);
-      const updatedSubscription = await stripe.subscriptions.update(currentSubscriptionId, {
-        items: [{
-          id: currentSubscription.items.data[0].id,
-          price: proPlan.stripePriceId,
-        }],
-        proration_behavior: "none", // No proration since user already paid the difference
-      });
-      console.log(`[Webhook] Subscription updated successfully. New price: ${updatedSubscription.items.data[0]?.price.id}`);
+      // Get the current subscription to calculate remaining days
+      const currentSubscription = await stripe.subscriptions.retrieve(currentSubscriptionId);
+      
+      // Calculate remaining days in current subscription period
+      const now = Math.floor(Date.now() / 1000);
+      const periodEnd = currentSubscription.current_period_end;
+      const remainingSeconds = Math.max(0, periodEnd - now);
+      const remainingDays = Math.ceil(remainingSeconds / (24 * 60 * 60));
+      
+      // Cancel the old subscription immediately
+      await stripe.subscriptions.cancel(currentSubscriptionId);
 
-      // Update local database
-      console.log(`[Webhook] Updating database for user ${userId}`);
-      const updatedDbSubscription = await prisma.subscription.update({
-        where: { userId },
-        data: {
-          stripePriceId: proPlan.stripePriceId,
-          status: updatedSubscription.status,
-          currentPeriodEnd: new Date(updatedSubscription.current_period_end * 1000),
-          cancelAtPeriodEnd: updatedSubscription.cancel_at_period_end || false,
+      // Create a new Pro subscription with trial period equal to remaining days in old subscription
+      // Since user already paid the upgrade cost, they shouldn't be charged until their old period would have ended
+      const trialEnd = periodEnd; // Use the old subscription's period end as the trial end
+      
+      const newSubscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: proPlan.stripePriceId }],
+        trial_end: trialEnd,
+        metadata: {
+          userId,
+          upgradeFrom: "starter",
+          oldSubscriptionId: currentSubscriptionId,
         },
       });
-      console.log(`[Webhook] Database updated. New price ID: ${updatedDbSubscription.stripePriceId}`);
 
-      // Add additional credits to usage meter
-      const period = new Date().toISOString().slice(0, 7); // YYYY-MM
-      const usageMeter = await prisma.usageMeter.findUnique({
-        where: { userId_period: { userId, period } },
+      // Update database with new subscription
+      await prisma.subscription.update({
+        where: { userId },
+        data: {
+          stripeSubscriptionId: newSubscription.id,
+          stripePriceId: proPlan.stripePriceId,
+          status: newSubscription.status,
+          currentPeriodEnd: new Date(newSubscription.current_period_end * 1000),
+          cancelAtPeriodEnd: false,
+        },
       });
 
-      if (usageMeter) {
-        // Add credits to the existing limit (increase included)
-        const newLimit = usageMeter.included + additionalCredits;
-        await prisma.usageMeter.update({
-          where: { id: usageMeter.id },
-          data: {
-            included: newLimit,
-          },
-        });
-        console.log(`[Webhook] Added ${additionalCredits} credits to user ${userId}. New limit: ${newLimit} (was ${usageMeter.included})`);
-      } else {
-        // Create new usage meter with Pro plan limits + additional credits
-        const newLimit = proPlan.includedAnalyses + additionalCredits;
-        await prisma.usageMeter.create({
-          data: {
-            userId,
-            period,
-            included: newLimit,
-            consumed: 0,
-          },
-        });
-        console.log(`[Webhook] Created usage meter for user ${userId} with ${newLimit} credits`);
-      }
-
-      console.log(`[Webhook] Successfully upgraded user ${userId} from Starter to Pro`);
+      // Set usage meter to Pro plan limit (50)
+      const period = new Date().toISOString().slice(0, 7);
+      await prisma.usageMeter.upsert({
+        where: { userId_period: { userId, period } },
+        update: {
+          included: proPlan.includedAnalyses,
+        },
+        create: {
+          userId,
+          period,
+          included: proPlan.includedAnalyses,
+          consumed: 0,
+        },
+      });
     } catch (err) {
       console.error("[Webhook] Error processing upgrade payment:", err);
       if (err instanceof Error) {
@@ -243,6 +218,36 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
     console.log("[Webhook] Plan found:", plan?.name, "Price ID:", priceId, "Status:", stripeSubscription.status);
 
+    // If this is an upgrade, cancel the old subscription
+    const isUpgrade = session.metadata?.upgrade === "true";
+    const oldSubscriptionId = session.metadata?.currentSubscriptionId;
+    
+    if (isUpgrade && oldSubscriptionId) {
+      console.log(`[Webhook] This is an upgrade. Canceling old subscription: ${oldSubscriptionId}`);
+      try {
+        await stripe.subscriptions.cancel(oldSubscriptionId);
+        console.log(`[Webhook] Old subscription ${oldSubscriptionId} canceled successfully`);
+      } catch (err) {
+        console.error(`[Webhook] Error canceling old subscription:`, err);
+        // Continue anyway - the new subscription is active
+      }
+    }
+
+    // If this is a reactivation, cancel the old subscription
+    const isReactivation = session.metadata?.reactivate === "true";
+    const oldSubId = session.metadata?.oldSubscriptionId;
+    
+    if (isReactivation && oldSubId) {
+      console.log(`[Webhook] This is a reactivation. Canceling old subscription: ${oldSubId}`);
+      try {
+        await stripe.subscriptions.cancel(oldSubId);
+        console.log(`[Webhook] Old subscription ${oldSubId} canceled successfully`);
+      } catch (err) {
+        console.error(`[Webhook] Error canceling old subscription:`, err);
+        // Continue anyway - the new subscription is active
+      }
+    }
+
     await prisma.subscription.upsert({
       where: { userId },
       update: {
@@ -266,20 +271,27 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
     console.log("[Webhook] Subscription upserted successfully");
 
-    // Initialize usage meter for current period
+    // Update usage meter for current period
     if (plan) {
       const period = new Date().toISOString().slice(0, 7); // YYYY-MM
+      const existingMeter = await prisma.usageMeter.findUnique({
+        where: { userId_period: { userId, period } },
+      });
+
+      // Set usage meter to plan's included analyses (don't add to existing)
       await prisma.usageMeter.upsert({
         where: { userId_period: { userId, period } },
-        update: { included: plan.includedAnalyses },
-        create: { 
-          userId, 
-          period, 
-          included: plan.includedAnalyses, 
+        update: {
+          included: plan.includedAnalyses, // Set to plan limit, not add to existing
+        },
+        create: {
+          userId,
+          period,
+          included: plan.includedAnalyses,
           consumed: 0,
         },
       });
-      console.log("[Webhook] Usage meter updated, limit:", plan.includedAnalyses);
+      console.log(`[Webhook] Usage meter set to ${plan.includedAnalyses} for ${plan.name} plan`);
     }
   } catch (err) {
     console.error("[Webhook] Error creating subscription:", err);
@@ -301,24 +313,57 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
     oldPrice: sub.stripePriceId,
     newPrice: priceId,
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    cancelAt: subscription.cancel_at,
+    subscriptionId: subscription.id,
   });
 
+  // Check if this is an upgrade to Pro (from Starter or from any canceled subscription)
+  const isUpgradeToPro = priceId === PLANS.pro.stripePriceId && sub.stripePriceId === PLANS.starter.stripePriceId;
+  const isProPlan = priceId === PLANS.pro.stripePriceId;
+  
+  // Update database
+  // For Pro plan subscriptions, always set cancelAtPeriodEnd to false (upgrades should never be canceled)
   await prisma.subscription.update({
     where: { id: sub.id },
     data: {
       stripePriceId: priceId,
       status: subscription.status,
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      cancelAtPeriodEnd: isProPlan ? false : subscription.cancel_at_period_end,
     },
   });
+  
+  // If this is Pro plan and Stripe still has cancellation flag, remove it
+  if (isProPlan && subscription.cancel_at_period_end) {
+    try {
+      await stripe.subscriptions.update(subscription.id, {
+        cancel_at_period_end: false,
+        cancel_at: null,
+      });
+      // Update database again to ensure it's false
+      await prisma.subscription.update({
+        where: { id: sub.id },
+        data: { cancelAtPeriodEnd: false },
+      });
+    } catch (err) {
+      console.error(`[Webhook] Error removing cancellation flag:`, err);
+    }
+  }
 
-  // Update usage meter if plan changed
+  // Update usage meter if plan changed - set to plan's limit
   if (plan && priceId !== sub.stripePriceId) {
     const period = new Date().toISOString().slice(0, 7);
-    await prisma.usageMeter.updateMany({
-      where: { userId: sub.userId, period },
-      data: { included: plan.includedAnalyses },
+    await prisma.usageMeter.upsert({
+      where: { userId_period: { userId: sub.userId, period } },
+      update: {
+        included: plan.includedAnalyses, // Set to plan limit
+      },
+      create: {
+        userId: sub.userId,
+        period,
+        included: plan.includedAnalyses,
+        consumed: 0,
+      },
     });
   }
 }

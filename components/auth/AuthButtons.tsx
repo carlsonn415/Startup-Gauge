@@ -14,6 +14,29 @@ export default function AuthButtons() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  const fetchSubscriptionInfo = async () => {
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken;
+      
+      if (idToken) {
+        try {
+          const res = await fetch("/api/user/subscription", {
+            headers: { authorization: `Bearer ${idToken.toString()}` },
+          });
+          const data = await res.json();
+          if (data.ok && data.plan) {
+            setCurrentPlan(data.plan.name);
+          }
+        } catch (error) {
+          console.error("Error fetching plan:", error);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching subscription info:", error);
+    }
+  };
+
   useEffect(() => {
     configureAmplify();
     (async () => {
@@ -30,19 +53,7 @@ export default function AuthButtons() {
         setEmail(userEmail);
 
         // Fetch subscription plan
-        if (idToken) {
-          try {
-            const res = await fetch("/api/user/subscription", {
-              headers: { authorization: `Bearer ${idToken.toString()}` },
-            });
-            const data = await res.json();
-            if (data.ok && data.plan) {
-              setCurrentPlan(data.plan.name);
-            }
-          } catch (error) {
-            console.error("Error fetching plan:", error);
-          }
-        }
+        await fetchSubscriptionInfo();
       } catch (error) {
         console.log("Not authenticated:", error);
         setEmail(null);
@@ -50,6 +61,17 @@ export default function AuthButtons() {
         setLoading(false);
       }
     })();
+
+    // Listen for subscription update events
+    const handleSubscriptionUpdate = () => {
+      fetchSubscriptionInfo();
+    };
+    
+    window.addEventListener('subscription-updated', handleSubscriptionUpdate);
+    
+    return () => {
+      window.removeEventListener('subscription-updated', handleSubscriptionUpdate);
+    };
   }, []);
 
   // Close dropdown when clicking outside

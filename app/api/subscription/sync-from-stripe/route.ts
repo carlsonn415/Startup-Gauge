@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
       return errorResponse("User not found", 404, "USER_NOT_FOUND");
     }
 
-    console.log(`[Sync] Looking up subscription for user: ${user.id} (${userEmail})`);
 
     // Check if subscription already exists in database
     const existingSubscription = await prisma.subscription.findUnique({
@@ -38,8 +37,6 @@ export async function POST(req: NextRequest) {
     // This handles the case where webhooks aren't configured or failed
     // This MUST run before regular sync to process upgrades
     if (existingSubscription?.stripeCustomerId) {
-      console.log(`[Sync] Checking for recent upgrade payments...`);
-      
       try {
         // Get recent checkout sessions for this customer
         const checkoutSessions = await stripe.checkout.sessions.list({
@@ -58,88 +55,103 @@ export async function POST(req: NextRequest) {
         );
 
         if (upgradeSession) {
-          console.log(`[Sync] Found recent upgrade payment: ${upgradeSession.id}`);
-          console.log(`[Sync] Processing upgrade manually (webhook may not have fired)...`);
-          
-          // Process the upgrade manually (same logic as webhook handler)
-          const proPlan = PLANS.pro;
-          if (proPlan.stripePriceId && existingSubscription.stripeSubscriptionId) {
-            try {
-              // Update subscription to Pro plan
-              const currentSubscription = await stripe.subscriptions.retrieve(
-                existingSubscription.stripeSubscriptionId
-              );
-              
-              // Only update if not already on Pro
-              if (currentSubscription.items.data[0]?.price.id !== proPlan.stripePriceId) {
-                console.log(`[Sync] Updating subscription to Pro plan...`);
-                const updatedSubscription = await stripe.subscriptions.update(
-                  existingSubscription.stripeSubscriptionId,
-                  {
-                    items: [{
-                      id: currentSubscription.items.data[0].id,
-                      price: proPlan.stripePriceId,
-                    }],
-                    proration_behavior: "none",
+          // Check if subscription is already on Pro plan (upgrade may have already been processed)
+          if (existingSubscription.stripePriceId === PLANS.pro.stripePriceId) {
+            // Continue to regular sync
+          } else {
+            // Process the upgrade manually (same logic as webhook handler)
+            const proPlan = PLANS.pro;
+            const currentSubscriptionId = upgradeSession.metadata?.currentSubscriptionId;
+            
+            if (proPlan.stripePriceId && currentSubscriptionId) {
+              try {
+                const customerId = existingSubscription.stripeCustomerId;
+                
+                // Check if old subscription still exists before trying to retrieve it
+                let oldSubscription;
+                try {
+                  oldSubscription = await stripe.subscriptions.retrieve(currentSubscriptionId);
+                } catch (err: any) {
+                  // If subscription doesn't exist, it may have already been canceled
+                  // Check if we already have a new Pro subscription
+                  if (existingSubscription.stripeSubscriptionId !== currentSubscriptionId) {
+                    // Upgrade already processed, continue to regular sync
+                    return successResponse({
+                      message: "Upgrade already processed",
+                      subscription: {
+                        status: existingSubscription.status,
+                        plan: "pro",
+                      },
+                    });
                   }
-                );
+                  throw err; // Re-throw if it's a different error
+                }
+                
+                // Only process if not already on Pro
+                if (oldSubscription.items.data[0]?.price.id !== proPlan.stripePriceId) {
+                  // Calculate remaining days in current subscription period
+                  const now = Math.floor(Date.now() / 1000);
+                  const periodEnd = oldSubscription.current_period_end;
+                  
+                  // Cancel the old subscription immediately
+                  await stripe.subscriptions.cancel(currentSubscriptionId);
 
-                // Update database
-                await prisma.subscription.update({
-                  where: { userId: user.id },
-                  data: {
-                    stripePriceId: proPlan.stripePriceId,
-                    status: updatedSubscription.status,
-                    currentPeriodEnd: new Date(updatedSubscription.current_period_end * 1000),
-                    cancelAtPeriodEnd: updatedSubscription.cancel_at_period_end || false,
-                  },
-                });
-
-                // Add 75 bonus credits
-                const period = new Date().toISOString().slice(0, 7);
-                const usageMeter = await prisma.usageMeter.findUnique({
-                  where: { userId_period: { userId: user.id, period } },
-                });
-
-                if (usageMeter) {
-                  await prisma.usageMeter.update({
-                    where: { id: usageMeter.id },
-                    data: {
-                      included: usageMeter.included + 75,
+                  // Create a new Pro subscription with trial period equal to remaining days in old subscription
+                  // Since user already paid the upgrade cost, they shouldn't be charged until their old period would have ended
+                  const trialEnd = periodEnd; // Use the old subscription's period end as the trial end
+                  
+                  const newSubscription = await stripe.subscriptions.create({
+                    customer: customerId,
+                    items: [{ price: proPlan.stripePriceId }],
+                    trial_end: trialEnd,
+                    metadata: {
+                      userId: user.id,
+                      upgradeFrom: "starter",
+                      oldSubscriptionId: currentSubscriptionId,
                     },
                   });
-                  console.log(`[Sync] Added 75 credits. New limit: ${usageMeter.included + 75}`);
-                } else {
-                  await prisma.usageMeter.create({
+
+                  // Update database with new subscription
+                  await prisma.subscription.update({
+                    where: { userId: user.id },
                     data: {
+                      stripeSubscriptionId: newSubscription.id,
+                      stripePriceId: proPlan.stripePriceId,
+                      status: newSubscription.status,
+                      currentPeriodEnd: new Date(newSubscription.current_period_end * 1000),
+                      cancelAtPeriodEnd: false,
+                    },
+                  });
+
+                  // Set usage meter to Pro plan limit (50)
+                  const period = new Date().toISOString().slice(0, 7);
+                  await prisma.usageMeter.upsert({
+                    where: { userId_period: { userId: user.id, period } },
+                    update: {
+                      included: proPlan.includedAnalyses,
+                    },
+                    create: {
                       userId: user.id,
                       period,
-                      included: proPlan.includedAnalyses + 75,
+                      included: proPlan.includedAnalyses,
                       consumed: 0,
                     },
                   });
-                  console.log(`[Sync] Created usage meter with ${proPlan.includedAnalyses + 75} credits`);
+                  
+                  return successResponse({
+                    message: "Upgrade processed successfully",
+                    subscription: {
+                      status: newSubscription.status,
+                      plan: "pro",
+                    },
+                  });
                 }
-
-                console.log(`[Sync] Successfully processed upgrade to Pro plan`);
-                
-                return successResponse({
-                  message: "Upgrade processed successfully",
-                  subscription: {
-                    status: updatedSubscription.status,
-                    plan: "pro",
-                  },
-                });
-              } else {
-                console.log(`[Sync] Subscription already on Pro plan`);
+              } catch (err) {
+                console.error(`[Sync] Error processing upgrade:`, err);
+                // Continue to regular sync if upgrade fails
               }
-            } catch (err) {
-              console.error(`[Sync] Error processing upgrade:`, err);
-              // Continue to regular sync if upgrade fails
             }
           }
-        } else {
-          console.log(`[Sync] No recent upgrade payments found`);
         }
       } catch (err) {
         console.error(`[Sync] Error checking for upgrade payments:`, err);
@@ -148,11 +160,15 @@ export async function POST(req: NextRequest) {
     }
 
     // SECOND: If subscription exists in DB, verify it's still active in Stripe and sync
-    if (existingSubscription?.stripeSubscriptionId) {
-      console.log(`[Sync] Found existing subscription in DB: ${existingSubscription.stripeSubscriptionId}`);
+    // Refresh subscription from DB in case it was updated by upgrade processing
+    const currentSubscription = await prisma.subscription.findUnique({
+      where: { userId: user.id },
+    });
+    
+    if (currentSubscription?.stripeSubscriptionId) {
       try {
         const stripeSubscription = await stripe.subscriptions.retrieve(
-          existingSubscription.stripeSubscriptionId
+          currentSubscription.stripeSubscriptionId
         );
         
         const priceId = stripeSubscription.items.data[0]?.price.id;
@@ -160,7 +176,7 @@ export async function POST(req: NextRequest) {
 
         // Update subscription in database
         await prisma.subscription.update({
-          where: { id: existingSubscription.id },
+          where: { id: currentSubscription.id },
           data: {
             stripePriceId: priceId,
             status: stripeSubscription.status,
@@ -198,8 +214,6 @@ export async function POST(req: NextRequest) {
     }
 
     // No subscription in DB or it was deleted - search Stripe for active subscriptions
-    console.log(`[Sync] Searching Stripe for subscriptions for customer...`);
-
     // First, try to find customer by email
     const customers = await stripe.customers.list({
       email: userEmail,
@@ -207,7 +221,6 @@ export async function POST(req: NextRequest) {
     });
 
     if (customers.data.length === 0) {
-      console.log(`[Sync] No Stripe customer found for email: ${userEmail}`);
       return successResponse({
         message: "No subscription found",
         subscription: null,
@@ -216,8 +229,6 @@ export async function POST(req: NextRequest) {
 
     // Check each customer for active subscriptions
     for (const customer of customers.data) {
-      console.log(`[Sync] Checking customer: ${customer.id}`);
-      
       // Get all subscriptions for this customer
       const subscriptions = await stripe.subscriptions.list({
         customer: customer.id,
@@ -231,8 +242,6 @@ export async function POST(req: NextRequest) {
       );
 
       if (activeSubscription) {
-        console.log(`[Sync] Found active subscription: ${activeSubscription.id}`);
-        
         const priceId = activeSubscription.items.data[0]?.price.id;
         const plan = getPlanByPriceId(priceId);
 
@@ -273,8 +282,6 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        console.log(`[Sync] Successfully created subscription in DB: ${activeSubscription.id}`);
-        
         return successResponse({
           message: "Subscription created from Stripe",
           subscription: {
@@ -285,7 +292,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log(`[Sync] No active subscription found in Stripe`);
     return successResponse({
       message: "No active subscription found",
       subscription: null,
