@@ -59,13 +59,8 @@ export function configureAmplify() {
             oauth: {
               domain: oauthDomain,
               scopes: ["openid", "email", "profile"],
-<<<<<<< HEAD
               redirectSignIn: [baseRedirectUrl],  // Array with only base URL
               redirectSignOut: [baseRedirectUrl],  // Array with only base URL
-=======
-              redirectSignIn: baseRedirectUrl,  // Use string, not array
-              redirectSignOut: baseRedirectUrl,  // Use string, not array
->>>>>>> origin/production
               responseType: "code",
             },
           },
