@@ -69,6 +69,59 @@ export async function GET(
   }
 }
 
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Auth required
+    const auth = req.headers.get("authorization") || undefined;
+    const payload = await verifyAuthHeader(auth);
+    if (!payload) {
+      return errorResponse("Unauthorized", 401, "UNAUTHORIZED");
+    }
+
+    const email = payload.email as string;
+    const { id } = params;
+    const body = await req.json();
+
+    // Get user
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return errorResponse("User not found", 404, "USER_NOT_FOUND");
+    }
+
+    // Verify project exists and belongs to user
+    const project = await prisma.project.findFirst({
+      where: {
+        id,
+        userId: user.id,
+      },
+    });
+
+    if (!project) {
+      return errorResponse("Project not found", 404, "PROJECT_NOT_FOUND");
+    }
+
+    // Update project
+    const updatedProject = await prisma.project.update({
+      where: { id },
+      data: {
+        ...(body.title && { title: body.title }),
+        ...(body.description !== undefined && { description: body.description }),
+      },
+    });
+
+    return successResponse({
+      id: updatedProject.id,
+      title: updatedProject.title,
+      description: updatedProject.description,
+    });
+  } catch (err: unknown) {
+    return handleApiError(err);
+  }
+}
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }

@@ -397,7 +397,7 @@ export default function ProjectReportPage() {
             )}
           </button>
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/projects")}
             className="rounded-md border border-gray-300 px-4 py-2 hover:bg-gray-50"
           >
             Back to Projects
