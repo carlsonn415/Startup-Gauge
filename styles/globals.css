@@ -2,7 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #__next {
+html {
   height: 100%;
+  min-height: 100%;
+  background-color: rgb(156, 163, 175);
+}
+
+body {
+  min-height: 100vh;
+  background: transparent;
+}
+
+@layer base {
+  body {
+    @apply text-slate-800;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  textarea {
+    @apply border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+      .bg-gradient-fast {
+        background: linear-gradient(to bottom,
+          white 0%,
+          white 10%,
+          rgb(83, 72, 146) 20%,
+          rgb(65, 53, 131) 35%,
+          rgb(103, 72, 255) 100%);
+        background-repeat: no-repeat;
+        background-size: 100% 1000vh;
+      }
 }
 

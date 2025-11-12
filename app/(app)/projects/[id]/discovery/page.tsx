@@ -16,7 +16,8 @@ export default function DiscoveryPage() {
   const router = useRouter();
   const projectId = params.id as string;
 
-  const [businessIdea, setBusinessIdea] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [businessDescription, setBusinessDescription] = useState("");
   const [discovering, setDiscovering] = useState(false);
   const [urls, setUrls] = useState<DiscoveredUrl[]>([]);
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
@@ -25,7 +26,7 @@ export default function DiscoveryPage() {
   const [jobStatus, setJobStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch project details to get the business idea
+  // Fetch project details to get the business name and description
   useEffect(() => {
     async function fetchProject() {
       try {
@@ -34,7 +35,7 @@ export default function DiscoveryPage() {
         const idToken = session.tokens?.idToken?.toString();
 
         if (!idToken) {
-          router.push("/");
+          router.push("/projects");
           return;
         }
 
@@ -43,9 +44,14 @@ export default function DiscoveryPage() {
         });
 
         if (res.ok) {
-          const data = await res.json();
-          // Use description if available, otherwise fall back to businessIdea or title
-          setBusinessIdea(data.project?.description || data.project?.businessIdea || data.project?.title || "");
+          const response = await res.json();
+          if (response.ok && response.data) {
+            const project = response.data;
+            // Set business name from title
+            setBusinessName(project.title || "");
+            // Set business description from description field, or fall back to businessIdea or empty
+            setBusinessDescription(project.description || project.businessIdea || "");
+          }
         }
       } catch (err) {
         console.error("Failed to fetch project:", err);
@@ -92,8 +98,13 @@ export default function DiscoveryPage() {
   }, [jobId, jobStatus]);
 
   async function handleDiscover() {
-    if (!businessIdea.trim()) {
-      setError("Business idea is required");
+    if (!businessName.trim()) {
+      setError("Business name is required");
+      return;
+    }
+
+    if (!businessDescription.trim()) {
+      setError("Business description is required");
       return;
     }
 
@@ -110,13 +121,31 @@ export default function DiscoveryPage() {
         return;
       }
 
+      // Update project title and description if they've changed
+      const updateRes = await fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          title: businessName.trim(),
+          description: businessDescription.trim(),
+        }),
+      });
+
+      if (!updateRes.ok) {
+        console.error("Failed to update project");
+      }
+
+      // Discover URLs using business description as the search query
       const res = await fetch("/api/discovery/urls", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           authorization: `Bearer ${idToken}`,
         },
-        body: JSON.stringify({ businessIdea }),
+        body: JSON.stringify({ businessIdea: businessDescription }),
       });
 
       const data = await res.json();
@@ -264,19 +293,29 @@ export default function DiscoveryPage() {
       {urls.length === 0 ? (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Business Idea</label>
+            <label className="block text-sm font-medium mb-2">Business Name</label>
+            <input
+              type="text"
+              className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="e.g., EcoPet Box"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Business Description</label>
             <textarea
-              className="w-full border rounded-md p-3 min-h-[100px]"
-              value={businessIdea}
-              onChange={(e) => setBusinessIdea(e.target.value)}
-              placeholder="e.g., A subscription box service for eco-friendly pet products"
+              className="w-full border border-gray-300 rounded-md p-3 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white"
+              value={businessDescription}
+              onChange={(e) => setBusinessDescription(e.target.value)}
+              placeholder="Describe your business idea in detail. For example: A subscription box service for eco-friendly pet products targeting environmentally conscious pet owners..."
             />
           </div>
 
           <button
-            className="w-full rounded-md bg-black px-4 py-3 text-white hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-md bg-primary-600 px-4 py-3 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 shadow-md hover:shadow-lg"
             onClick={handleDiscover}
-            disabled={discovering || !businessIdea.trim()}
+            disabled={discovering || !businessName.trim() || !businessDescription.trim()}
           >
             {discovering ? "Discovering..." : "Discover Resources"}
           </button>
@@ -292,7 +331,7 @@ export default function DiscoveryPage() {
 
           {Object.entries(categorizedUrls).map(([category, categoryUrls]) => (
             <div key={category} className="space-y-3">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
+              <h2 className="text-xl font-semibold flex items-center gap-2 text-slate-800">
                 {getCategoryIcon(category)}
                 {getCategoryLabel(category)} ({categoryUrls.length})
               </h2>
@@ -301,7 +340,7 @@ export default function DiscoveryPage() {
                 {categoryUrls.map((url) => (
                   <div
                     key={url.url}
-                    className="border rounded-md p-4 hover:bg-gray-50 cursor-pointer"
+                    className="border border-gray-200 rounded-lg p-4 bg-white shadow-soft hover:shadow-lg transition-all cursor-pointer"
                     onClick={() => toggleUrl(url.url)}
                   >
                     <div className="flex items-start gap-3">
@@ -309,23 +348,27 @@ export default function DiscoveryPage() {
                         type="checkbox"
                         checked={selectedUrls.has(url.url)}
                         onChange={() => toggleUrl(url.url)}
-                        className="mt-1"
+                        className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
                       />
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm truncate">{url.title}</h3>
+                        <h3 className="font-medium text-sm truncate mb-1 text-slate-800">
+                          {url.title}
+                        </h3>
                         <a 
                           href={url.url} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-xs text-blue-600 truncate hover:underline block"
+                          className="text-xs text-primary-600 truncate hover:text-primary-700 hover:underline block mb-1"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {url.url}
                         </a>
-                        <p className="text-xs text-gray-600 mt-1">{url.reason}</p>
-                        <span className="text-xs text-gray-500">
-                          Relevance: {Math.round(url.relevanceScore * 100)}%
-                        </span>
+                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">{url.reason}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs text-gray-500">
+                            Relevance: {Math.round(url.relevanceScore * 100)}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -336,7 +379,7 @@ export default function DiscoveryPage() {
 
           <div className="flex gap-3">
             <button
-              className="rounded-md border border-gray-300 px-4 py-3 hover:bg-gray-50 text-sm"
+              className="rounded-md border border-gray-300 px-4 py-3 bg-white hover:bg-gray-50 text-sm shadow-soft hover:shadow-md transition-all"
               onClick={toggleAllUrls}
             >
               {selectedUrls.size === urls.length ? "Unselect All" : "Select All"}
@@ -345,7 +388,7 @@ export default function DiscoveryPage() {
 
           <div className="flex gap-3">
             <button
-              className="flex-1 rounded-md bg-black px-4 py-3 text-white hover:opacity-90 disabled:opacity-50"
+              className="flex-1 rounded-md bg-primary-600 px-4 py-3 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 shadow-md hover:shadow-lg"
               onClick={handleAnalyze}
               disabled={ingesting || selectedUrls.size === 0}
             >
@@ -357,7 +400,7 @@ export default function DiscoveryPage() {
             </button>
 
             <button
-              className="rounded-md border border-gray-300 px-4 py-3 hover:bg-gray-50"
+              className="rounded-md border border-gray-300 px-4 py-3 bg-white hover:bg-gray-50 shadow-soft hover:shadow-md transition-all"
               onClick={() => {
                 setUrls([]);
                 setSelectedUrls(new Set());

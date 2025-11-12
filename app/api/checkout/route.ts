@@ -42,41 +42,63 @@ export async function POST(req: NextRequest) {
       customerId = customer.id;
     }
 
-    // If user has an existing subscription marked for cancellation, reactivate it
+    // If user has an existing subscription marked for cancellation, they must go through checkout
+    // to reactivate and upgrade - no direct updates allowed
     if (subscription?.stripeSubscriptionId && subscription.cancelAtPeriodEnd) {
-      console.log("User has subscription marked for cancellation, reactivating and upgrading");
+      // Check if this is a Starter to Pro upgrade
+      const currentSubscription = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
+      const currentPriceId = currentSubscription.items.data[0]?.price.id;
       
-      // Update the subscription to the new plan and remove cancellation
-      await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
-        cancel_at_period_end: false,
-        proration_behavior: "create_prorations",
-        items: [{
-          id: (await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId)).items.data[0].id,
-          price: plan.stripePriceId,
-        }],
-      });
+      // Special handling for Starter to Pro upgrade from canceled subscription
+      if (planId === "pro" && currentPriceId === PLANS.starter.stripePriceId) {
+        // Check if upgrade product is configured
+        const upgradePlan = PLANS["starter-to-pro-upgrade"];
+        if (!upgradePlan.stripePriceId) {
+          return NextResponse.json({ 
+            ok: false, 
+            error: "Upgrade product not configured. Please set STRIPE_PRICE_STARTER_TO_PRO_UPGRADE environment variable.",
+          }, { status: 500 });
+        }
 
-      // Update local database
-      await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: { 
-          cancelAtPeriodEnd: false,
-          stripePriceId: plan.stripePriceId,
+        // Create checkout session for the upgrade product (one-time payment)
+        const session = await stripe.checkout.sessions.create({
+          customer: customerId,
+          mode: "payment", // One-time payment, not subscription
+          payment_method_types: ["card"],
+          line_items: [{ price: upgradePlan.stripePriceId, quantity: 1 }],
+          success_url: `${req.headers.get("origin")}/?success=true&upgrade=pro`,
+          cancel_url: `${req.headers.get("origin")}/pricing`,
+          metadata: { 
+            userId: user.id, 
+            planId: "pro",
+            upgrade: "true",
+            upgradeType: "starter-to-pro",
+            currentSubscriptionId: subscription.stripeSubscriptionId,
+            additionalCredits: "30",
+            reactivate: "true", // Mark as reactivation since subscription is canceled
+          },
+        });
+
+        return NextResponse.json({ ok: true, url: session.url });
+      }
+
+      // For other reactivations/upgrades, create new subscription checkout
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: "subscription",
+        payment_method_types: ["card"],
+        line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+        success_url: `${req.headers.get("origin")}/?success=true`,
+        cancel_url: `${req.headers.get("origin")}/pricing`,
+        metadata: { 
+          userId: user.id, 
+          planId,
+          reactivate: "true",
+          oldSubscriptionId: subscription.stripeSubscriptionId,
         },
       });
 
-      // Update usage meter
-      const period = new Date().toISOString().slice(0, 7);
-      await prisma.usageMeter.updateMany({
-        where: { userId: user.id, period },
-        data: { included: plan.includedAnalyses },
-      });
-
-      return NextResponse.json({ 
-        ok: true, 
-        message: "Subscription reactivated and upgraded",
-        upgraded: true,
-      });
+      return NextResponse.json({ ok: true, url: session.url });
     }
 
     // If user already has an active subscription and wants to upgrade
@@ -119,58 +141,32 @@ export async function POST(req: NextRequest) {
             upgrade: "true",
             upgradeType: "starter-to-pro",
             currentSubscriptionId: subscription.stripeSubscriptionId,
-            additionalCredits: "75",
+            additionalCredits: "30",
           },
         });
 
         return NextResponse.json({ ok: true, url: session.url });
       }
 
-      // For other upgrades, update subscription directly with proration
-      const updatedSubscription = await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
-        proration_behavior: "create_prorations",
-        items: [{
-          id: currentSubscription.items.data[0].id,
-          price: plan.stripePriceId,
-        }],
-      });
-
-      // Check if an invoice was created that requires payment
-      if (updatedSubscription.latest_invoice) {
-        const invoice = await stripe.invoices.retrieve(updatedSubscription.latest_invoice as string);
-        
-        // If invoice is open and requires payment, redirect to payment page
-        if (invoice.status === "open" && invoice.hosted_invoice_url) {
-          return NextResponse.json({ 
-            ok: true, 
-            url: invoice.hosted_invoice_url,
-            requiresPayment: true,
-          });
-        }
-      }
-
-      // Payment was successful or not required - update database
-      await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: { 
-          stripePriceId: plan.stripePriceId,
-          status: updatedSubscription.status,
-          currentPeriodEnd: new Date(updatedSubscription.current_period_end * 1000),
+      // For other upgrades, must go through Stripe Checkout - no direct updates allowed
+      // Create checkout session for the upgrade
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: "subscription",
+        payment_method_types: ["card"],
+        line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+        success_url: `${req.headers.get("origin")}/?success=true&upgrade=true`,
+        cancel_url: `${req.headers.get("origin")}/pricing`,
+        metadata: { 
+          userId: user.id, 
+          planId,
+          upgrade: "true",
+          upgradeType: "subscription-upgrade",
+          currentSubscriptionId: subscription.stripeSubscriptionId,
         },
       });
 
-      // Update usage meter
-      const period = new Date().toISOString().slice(0, 7);
-      await prisma.usageMeter.updateMany({
-        where: { userId: user.id, period },
-        data: { included: plan.includedAnalyses },
-      });
-
-      return NextResponse.json({ 
-        ok: true, 
-        message: "Subscription upgraded successfully. Payment processed automatically.",
-        upgraded: true,
-      });
+      return NextResponse.json({ ok: true, url: session.url });
     }
 
     // Create Checkout session for new subscriptions

@@ -223,7 +223,7 @@ export default function ProjectDetailsPage() {
         <div>
           <label className="block text-sm font-medium mb-2">Business Idea</label>
           <textarea
-            className="w-full rounded-md border p-3 min-h-[100px]"
+            className="w-full rounded-md border border-gray-300 p-3 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white"
             rows={4}
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
@@ -233,7 +233,7 @@ export default function ProjectDetailsPage() {
         <div>
           <label className="block text-sm font-medium mb-2">Target Market</label>
           <input
-            className="w-full rounded-md border p-3"
+            className="w-full rounded-md border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white"
             value={targetMarket}
             onChange={(e) => setTargetMarket(e.target.value)}
             placeholder="e.g., Pet owners aged 25-45 interested in sustainability"
@@ -244,7 +244,7 @@ export default function ProjectDetailsPage() {
             <label className="block text-sm font-medium mb-2">Budget (USD)</label>
             <input
               type="number"
-              className="w-full rounded-md border p-3"
+              className="w-full rounded-md border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white"
               value={budget}
               onChange={(e) => setBudget(e.target.value)}
               placeholder="50000"
@@ -254,7 +254,7 @@ export default function ProjectDetailsPage() {
             <label className="block text-sm font-medium mb-2">Timeline (months)</label>
             <input
               type="number"
-              className="w-full rounded-md border p-3"
+              className="w-full rounded-md border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white"
               value={timeline}
               onChange={(e) => setTimeline(e.target.value)}
               placeholder="12"
@@ -264,7 +264,7 @@ export default function ProjectDetailsPage() {
 
         <button
           type="button"
-          className="w-full rounded-md bg-black px-4 py-3 text-white disabled:opacity-50"
+          className="w-full rounded-md bg-primary-600 px-4 py-3 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 shadow-md hover:shadow-lg"
           onClick={analyze}
           disabled={loading || !idea.trim() || !targetMarket.trim()}
         >

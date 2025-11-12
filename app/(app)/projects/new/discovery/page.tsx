@@ -354,7 +354,7 @@ export default function NewProjectDiscoveryPage() {
           </div>
 
           <button
-            className="w-full rounded-md bg-black px-4 py-3 text-white hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-md bg-primary-600 px-4 py-3 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 shadow-md hover:shadow-lg"
             onClick={handleDiscover}
             disabled={discovering || !businessName.trim() || !businessDescription.trim()}
           >
@@ -381,7 +381,7 @@ export default function NewProjectDiscoveryPage() {
                 {categoryUrls.map((url) => (
                   <div
                     key={url.url}
-                    className="border rounded-md p-4 hover:bg-gray-50 cursor-pointer"
+                    className="border border-gray-200 rounded-lg p-4 bg-white shadow-soft hover:shadow-lg transition-all cursor-pointer"
                     onClick={() => toggleUrl(url.url)}
                   >
                     <div className="flex items-start gap-3">
@@ -389,23 +389,25 @@ export default function NewProjectDiscoveryPage() {
                         type="checkbox"
                         checked={selectedUrls.has(url.url)}
                         onChange={() => toggleUrl(url.url)}
-                        className="mt-1"
+                        className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
                       />
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm truncate">{url.title}</h3>
+                        <h3 className="font-medium text-sm truncate mb-1 text-slate-800">{url.title}</h3>
                         <a 
                           href={url.url} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-xs text-blue-600 truncate hover:underline block"
+                          className="text-xs text-primary-600 truncate hover:text-primary-700 hover:underline block mb-1"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {url.url}
                         </a>
-                        <p className="text-xs text-gray-600 mt-1">{url.reason}</p>
-                        <span className="text-xs text-gray-500">
-                          Relevance: {Math.round(url.relevanceScore * 100)}%
-                        </span>
+                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">{url.reason}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs text-gray-500">
+                            Relevance: {Math.round(url.relevanceScore * 100)}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -416,7 +418,7 @@ export default function NewProjectDiscoveryPage() {
 
           <div className="flex gap-3">
             <button
-              className="rounded-md border border-gray-300 px-4 py-3 hover:bg-gray-50 text-sm"
+              className="rounded-md border border-gray-300 px-4 py-3 bg-white hover:bg-gray-50 text-sm shadow-soft hover:shadow-md transition-all"
               onClick={toggleAllUrls}
             >
               {selectedUrls.size === urls.length ? "Unselect All" : "Select All"}
@@ -425,7 +427,7 @@ export default function NewProjectDiscoveryPage() {
 
           <div className="flex gap-3">
             <button
-              className="flex-1 rounded-md bg-black px-4 py-3 text-white hover:opacity-90 disabled:opacity-50"
+              className="flex-1 rounded-md bg-primary-600 px-4 py-3 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 shadow-md hover:shadow-lg"
               onClick={handleAnalyze}
               disabled={analyzing || selectedUrls.size === 0 || analysisStatus === "processing"}
             >
@@ -437,7 +439,7 @@ export default function NewProjectDiscoveryPage() {
             </button>
 
             <button
-              className="rounded-md border border-gray-300 px-4 py-3 hover:bg-gray-50"
+              className="rounded-md border border-gray-300 px-4 py-3 bg-white hover:bg-gray-50 shadow-soft hover:shadow-md transition-all"
               onClick={() => {
                 setUrls([]);
                 setSelectedUrls(new Set());

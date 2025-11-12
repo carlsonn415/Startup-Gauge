@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PLANS } from "@/lib/stripe/plans";
 import { fetchAuthSession, getCurrentUser, signInWithRedirect } from "aws-amplify/auth";
@@ -18,7 +19,28 @@ function PricingContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [subscriptionExpanded, setSubscriptionExpanded] = useState(false);
+  const subscriptionSectionRef = useRef<HTMLDivElement>(null);
   const outOfCredits = searchParams?.get("outOfCredits") === "true";
+  const upgradeForPdf = searchParams?.get("upgradeForPdf") === "true";
+  const upgradeForPro = searchParams?.get("upgradeForPro") === "true";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (subscriptionExpanded && subscriptionSectionRef.current) {
+      // Scroll to the bottom of the page when expanded
+      setTimeout(() => {
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: "smooth",
+        });
+      }, 100); // Small delay to allow content to render
+    }
+  }, [subscriptionExpanded]);
 
   useEffect(() => {
     configureAmplify();
@@ -81,10 +103,9 @@ function PricingContent() {
 
       const data = await res.json();
       if (data.ok) {
-        setSuccess(data.message);
         setCancelConfirm(false);
-        // Refresh subscription info
-        setTimeout(() => window.location.reload(), 2000);
+        // Refresh subscription info immediately to show cancellation date
+        window.location.reload();
       } else {
         setError(data.error || "Failed to cancel subscription");
         setCancelConfirm(false);
@@ -165,13 +186,29 @@ function PricingContent() {
   return (
     <main className="space-y-8">
       <div className="text-center">
-        <h1 className="text-3xl font-bold">Pricing</h1>
+        <h1 className="text-3xl font-bold text-slate-900">Pricing</h1>
         <p className="mt-2 text-gray-600">Choose a plan that fits your needs</p>
         
         {outOfCredits && (
           <div className="mt-4 inline-block rounded-md bg-red-50 border border-red-200 px-4 py-2 max-w-2xl">
             <p className="text-sm text-red-800 font-medium">
               You've reached your monthly analysis limit. Upgrade your plan to get more analyses this month.
+            </p>
+          </div>
+        )}
+        
+        {upgradeForPdf && (
+          <div className="mt-4 inline-block rounded-md bg-blue-50 border border-blue-200 px-4 py-2 max-w-2xl">
+            <p className="text-sm text-blue-800 font-medium">
+              Upgrade your subscription to Starter or Pro to export reports to PDF.
+            </p>
+          </div>
+        )}
+        
+        {upgradeForPro && (
+          <div className="mt-4 inline-block rounded-md bg-blue-50 border border-blue-200 px-4 py-2 max-w-2xl">
+            <p className="text-sm text-blue-800 font-medium">
+              Upgrade to Pro plan to ask questions about your viability reports.
             </p>
           </div>
         )}
@@ -214,9 +251,9 @@ function PricingContent() {
         </div>
       )}
 
-      {cancelConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+      {cancelConfirm && mounted && createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, width: "100vw", height: "100vh" }}>
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4 z-[10000]">
             <h3 className="text-lg font-semibold mb-4">Cancel Subscription</h3>
             <p className="text-gray-600 mb-6">
               Are you sure you want to cancel your subscription? You'll retain access until the end of your billing period.
@@ -237,7 +274,8 @@ function PricingContent() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -246,12 +284,19 @@ function PricingContent() {
           .map((plan) => (
           <div
             key={plan.id}
-            className="flex flex-col rounded-lg border bg-white p-6 shadow-sm"
+            className={`flex flex-col rounded-lg border bg-white p-6 shadow-soft transition-all hover:shadow-lg ${
+              plan.id === "starter" ? "border-2 border-primary-600 relative" : "border-gray-200"
+            }`}
           >
-            <h3 className="text-xl font-semibold">{plan.name}</h3>
+            {plan.id === "starter" && (
+              <div className="absolute top-0 right-0 bg-primary-600 text-white text-xs px-3 py-1 rounded-bl-lg font-semibold">
+                Popular
+              </div>
+            )}
+            <h3 className="text-xl font-semibold text-slate-800">{plan.name}</h3>
             <div className="mt-4">
-              <span className="text-4xl font-bold">${plan.priceMonthly}</span>
-              <span className="text-gray-600">/month</span>
+              <span className="text-4xl font-bold text-slate-900">${plan.priceMonthly}</span>
+              <span className="text-gray-500">/month</span>
             </div>
             <ul className="mt-6 space-y-3">
               {plan.features.map((feature, idx) => (
@@ -268,23 +313,12 @@ function PricingContent() {
                   Processing...
                 </button>
               ) : plan.id === currentPlanId ? (
-                <>
-                  <button
-                    className="w-full rounded-md bg-green-100 border border-green-500 px-4 py-2 text-green-700 font-medium"
-                    disabled
-                  >
-                    ✓ Current Plan
-                  </button>
-                  {plan.id !== "free" && !subscriptionInfo?.cancelAtPeriodEnd && (
-                    <button
-                      className="w-full rounded-md bg-red-50 border border-red-300 px-4 py-2 text-red-700 text-sm hover:bg-red-100 disabled:opacity-50"
-                      onClick={handleCancelClick}
-                      disabled={cancellingSubscription}
-                    >
-                      Cancel Subscription
-                    </button>
-                  )}
-                </>
+                <button
+                  className="w-full rounded-md bg-green-100 border border-green-500 px-4 py-2 text-green-700 font-medium"
+                  disabled
+                >
+                  ✓ Current Plan
+                </button>
               ) : isDowngrade(plan.id) ? (
                 <button
                   className="w-full rounded-md bg-gray-100 px-4 py-2 text-gray-400 cursor-not-allowed"
@@ -294,7 +328,7 @@ function PricingContent() {
                 </button>
               ) : (
                 <button
-                  className="w-full rounded-md bg-black px-4 py-2 text-white hover:opacity-90 disabled:opacity-50"
+                  className="w-full rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 shadow-md hover:shadow-lg"
                   onClick={() => handleSubscribe(plan.id)}
                   disabled={loading === plan.id}
                 >
@@ -310,6 +344,55 @@ function PricingContent() {
           </div>
         ))}
       </div>
+
+      {/* Cancel Subscription Section - Only show for paid plans */}
+      {subscriptionInfo && currentPlanId !== "free" && !subscriptionInfo.cancelAtPeriodEnd && (
+        <div ref={subscriptionSectionRef} className="mt-12 pt-8 border-t border-gray-200 pb-12">
+          <div className="max-w-2xl mx-auto">
+            <button
+              onClick={() => setSubscriptionExpanded(!subscriptionExpanded)}
+              className="w-full flex items-center justify-between bg-white rounded-lg border border-gray-200 p-4 hover:bg-gray-50 transition-colors"
+            >
+              <h2 className="text-xl font-semibold text-slate-900">Manage Subscription</h2>
+              <svg
+                className={`w-5 h-5 text-gray-500 transition-transform ${subscriptionExpanded ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {subscriptionExpanded && (
+              <div className="mt-4 space-y-4">
+                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium text-slate-800">Next billing date:</span>{" "}
+                      {new Date(subscriptionInfo.currentPeriodEnd).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium text-slate-800">Amount:</span>{" "}
+                      ${PLANS[currentPlanId as keyof typeof PLANS]?.priceMonthly || 0}/month
+                    </p>
+                  </div>
+                </div>
+                <button
+                  className="w-full rounded-md bg-red-50 border border-red-300 px-4 py-4 text-red-700 text-sm hover:bg-red-100 disabled:opacity-50 transition-colors"
+                  onClick={handleCancelClick}
+                  disabled={cancellingSubscription}
+                >
+                  {cancellingSubscription ? "Cancelling..." : "Cancel Subscription"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
