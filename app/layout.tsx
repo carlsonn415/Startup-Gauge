@@ -26,10 +26,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
       </head>
-      <body className="min-h-screen bg-white text-gray-900 antialiased">
+      <body className="min-h-screen antialiased">
         <div className="mx-auto max-w-6xl px-4 py-6">
           <header className="mb-6 flex items-center justify-between">
-            <a href="/" className="font-semibold text-xl hover:opacity-80 transition-opacity">Startup Gauge</a>
+            <a href="/" className="font-semibold text-xl text-primary-700 hover:text-primary-600 transition-colors">Startup Gauge</a>
             <AuthButtons />
           </header>
           {children}

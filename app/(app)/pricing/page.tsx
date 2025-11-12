@@ -19,6 +19,8 @@ function PricingContent() {
   const [success, setSuccess] = useState<string | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const outOfCredits = searchParams?.get("outOfCredits") === "true";
+  const upgradeForPdf = searchParams?.get("upgradeForPdf") === "true";
+  const upgradeForPro = searchParams?.get("upgradeForPro") === "true";
 
   useEffect(() => {
     configureAmplify();
@@ -172,6 +174,22 @@ function PricingContent() {
           <div className="mt-4 inline-block rounded-md bg-red-50 border border-red-200 px-4 py-2 max-w-2xl">
             <p className="text-sm text-red-800 font-medium">
               You've reached your monthly analysis limit. Upgrade your plan to get more analyses this month.
+            </p>
+          </div>
+        )}
+        
+        {upgradeForPdf && (
+          <div className="mt-4 inline-block rounded-md bg-blue-50 border border-blue-200 px-4 py-2 max-w-2xl">
+            <p className="text-sm text-blue-800 font-medium">
+              Upgrade your subscription to Starter or Pro to export reports to PDF.
+            </p>
+          </div>
+        )}
+        
+        {upgradeForPro && (
+          <div className="mt-4 inline-block rounded-md bg-blue-50 border border-blue-200 px-4 py-2 max-w-2xl">
+            <p className="text-sm text-blue-800 font-medium">
+              Upgrade to Pro plan to ask questions about your viability reports.
             </p>
           </div>
         )}

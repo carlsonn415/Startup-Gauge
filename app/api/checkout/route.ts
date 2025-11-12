@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
             upgrade: "true",
             upgradeType: "starter-to-pro",
             currentSubscriptionId: subscription.stripeSubscriptionId,
-            additionalCredits: "75",
+            additionalCredits: "30",
           },
         });
 

@@ -218,7 +218,7 @@ export default function HomePage() {
                   await signInWithRedirect();
                 }
               }}
-              className="inline-flex items-center justify-center rounded-md bg-black px-8 py-3 text-white hover:opacity-90 text-lg font-medium"
+              className="inline-flex items-center justify-center rounded-md bg-primary-600 px-8 py-3 text-white hover:bg-primary-700 transition-colors text-lg font-medium shadow-lg hover:shadow-xl"
             >
               Get Started for Free
             </button>
@@ -232,7 +232,7 @@ export default function HomePage() {
                   await signInWithRedirect();
                 }
               }}
-              className="inline-flex items-center justify-center rounded-md border border-gray-300 px-8 py-3 hover:bg-gray-50 text-lg font-medium"
+              className="inline-flex items-center justify-center rounded-md border-2 border-primary-600 px-8 py-3 text-primary-700 hover:bg-primary-50 text-lg font-medium transition-colors"
             >
               View Pricing
             </button>
@@ -302,12 +302,12 @@ export default function HomePage() {
           <h2 className="text-3xl font-bold text-center mb-4">Simple, Transparent Pricing</h2>
           <p className="text-center text-gray-600 mb-12">Start free, upgrade when you need more</p>
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            <div className="border rounded-lg p-6 flex flex-col">
-              <h3 className="text-xl font-semibold mb-2">Free</h3>
-              <div className="text-3xl font-bold mb-4">$0<span className="text-lg text-gray-600">/month</span></div>
+            <div className="border border-gray-200 rounded-lg p-6 flex flex-col bg-white shadow-soft hover:shadow-lg transition-shadow">
+              <h3 className="text-xl font-semibold mb-2 text-slate-800">Free</h3>
+              <div className="text-3xl font-bold mb-4 text-slate-900">$0<span className="text-lg text-gray-500">/month</span></div>
               <ul className="space-y-2 mb-6 flex-grow">
                 <li className="text-sm text-gray-600">✓ 3 analyses per month</li>
-                <li className="text-sm text-gray-600">✓ Basic reports</li>
+                <li className="text-sm text-gray-600">✓ Full viability reports</li>
                 <li className="text-sm text-gray-600">✓ Email support</li>
               </ul>
               <button
@@ -325,14 +325,14 @@ export default function HomePage() {
                 Get Started
               </button>
             </div>
-            <div className="border-2 border-black rounded-lg p-6 relative flex flex-col">
-              <div className="absolute top-0 right-0 bg-black text-white text-xs px-2 py-1 rounded-bl">Popular</div>
-              <h3 className="text-xl font-semibold mb-2">Starter</h3>
-              <div className="text-3xl font-bold mb-4">$29<span className="text-lg text-gray-600">/month</span></div>
+            <div className="border-2 border-primary-600 rounded-lg p-6 relative flex flex-col bg-white shadow-soft hover:shadow-glow transition-shadow">
+              <div className="absolute top-0 right-0 bg-primary-600 text-white text-xs px-3 py-1 rounded-bl-lg font-semibold">Popular</div>
+              <h3 className="text-xl font-semibold mb-2 text-slate-800">Starter</h3>
+              <div className="text-3xl font-bold mb-4 text-slate-900">$5<span className="text-lg text-gray-500">/month</span></div>
               <ul className="space-y-2 mb-6 flex-grow">
-                <li className="text-sm text-gray-600">✓ 25 analyses per month</li>
-                <li className="text-sm text-gray-600">✓ Detailed reports</li>
-                <li className="text-sm text-gray-600">✓ Priority support</li>
+                <li className="text-sm text-gray-600">✓ 20 analyses per month</li>
+                <li className="text-sm text-gray-600">✓ Full viability reports</li>
+                <li className="text-sm text-gray-600">✓ Priority email support</li>
                 <li className="text-sm text-gray-600">✓ Export to PDF</li>
               </ul>
               <button
@@ -345,19 +345,20 @@ export default function HomePage() {
                     await signInWithRedirect();
                   }
                 }}
-                className="w-full rounded-md bg-black px-4 py-2 text-white hover:opacity-90"
+                className="w-full rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700 transition-colors shadow-md hover:shadow-lg"
               >
                 Upgrade Now
               </button>
             </div>
-            <div className="border rounded-lg p-6 flex flex-col">
-              <h3 className="text-xl font-semibold mb-2">Pro</h3>
-              <div className="text-3xl font-bold mb-4">$99<span className="text-lg text-gray-600">/month</span></div>
+            <div className="border border-gray-200 rounded-lg p-6 flex flex-col bg-white shadow-soft hover:shadow-lg transition-shadow">
+              <h3 className="text-xl font-semibold mb-2 text-slate-800">Pro</h3>
+              <div className="text-3xl font-bold mb-4 text-slate-900">$15<span className="text-lg text-gray-500">/month</span></div>
               <ul className="space-y-2 mb-6 flex-grow">
-                <li className="text-sm text-gray-600">✓ 100 analyses per month</li>
-                <li className="text-sm text-gray-600">✓ Advanced reports</li>
-                <li className="text-sm text-gray-600">✓ RAG document uploads</li>
-                <li className="text-sm text-gray-600">✓ API access</li>
+                <li className="text-sm text-gray-600">✓ 50 analyses per month</li>
+                <li className="text-sm text-gray-600">✓ Full viability reports</li>
+                <li className="text-sm text-gray-600">✓ Priority email support</li>
+                <li className="text-sm text-gray-600">✓ Export to PDF</li>
+                <li className="text-sm text-gray-600">✓ Ask follow up questions</li>
               </ul>
               <button
                 onClick={async () => {
