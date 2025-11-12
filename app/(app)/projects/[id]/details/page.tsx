@@ -19,6 +19,7 @@ export default function ProjectDetailsPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [project, setProject] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     configureAmplify();
@@ -82,18 +83,19 @@ export default function ProjectDetailsPage() {
 
   async function analyze() {
     if (!idea.trim() || !targetMarket.trim()) {
-      alert("Idea and target market are required");
+      setFormError("Idea and target market are required");
       return;
     }
 
     setLoading(true);
     setResult(null);
+    setFormError(null);
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
-        alert("Please sign in");
+        setFormError("Please sign in");
         setLoading(false);
         return;
       }
@@ -121,7 +123,7 @@ export default function ProjectDetailsPage() {
       // Navigate to report page
       router.push(`/projects/${projectId}/report`);
     } catch (e: any) {
-      alert(`Error: ${e.message}`);
+      setFormError(`Error: ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -159,6 +161,20 @@ export default function ProjectDetailsPage() {
           >
             Retry
           </button>
+        </div>
+      )}
+
+      {formError && (
+        <div className="rounded-md bg-red-50 border border-red-200 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-800">{formError}</p>
+            <button
+              onClick={() => setFormError(null)}
+              className="text-red-600 hover:text-red-800"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 

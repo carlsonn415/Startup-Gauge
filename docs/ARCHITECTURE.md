@@ -1,6 +1,6 @@
 # Architecture Documentation
 
-> System design and technical architecture for Business Viability Calculator
+> System design and technical architecture for Startup Gauge
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## System Overview
 
-Business Viability Calculator is a serverless SaaS application built on AWS infrastructure with a Next.js frontend and API layer. The system combines real-time AI analysis with asynchronous document processing for enhanced market research.
+Startup Gauge is a serverless SaaS application built on AWS infrastructure with a Next.js frontend and API layer. The system combines real-time AI analysis with asynchronous document processing for enhanced market research.
 
 **Core Components:**
 - **Next.js App** - SSR React application with API routes

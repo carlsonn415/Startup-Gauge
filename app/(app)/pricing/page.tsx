@@ -13,6 +13,9 @@ export default function PricingPage() {
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [cancellingSubscription, setCancellingSubscription] = useState(false);
   const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [cancelConfirm, setCancelConfirm] = useState(false);
 
   useEffect(() => {
     configureAmplify();
@@ -39,18 +42,25 @@ export default function PricingPage() {
     })();
   }, []);
 
-  async function handleCancelSubscription() {
-    if (!confirm("Are you sure you want to cancel your subscription? You'll retain access until the end of your billing period.")) {
-      return;
-    }
+  function handleCancelClick() {
+    setCancelConfirm(true);
+  }
 
+  function handleCancelCancel() {
+    setCancelConfirm(false);
+  }
+
+  async function handleCancelSubscription() {
     setCancellingSubscription(true);
+    setError(null);
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
-        alert("Please sign in");
+        setError("Please sign in");
+        setCancelConfirm(false);
+        setCancellingSubscription(false);
         return;
       }
 
@@ -61,14 +71,17 @@ export default function PricingPage() {
 
       const data = await res.json();
       if (data.ok) {
-        alert(data.message);
+        setSuccess(data.message);
+        setCancelConfirm(false);
         // Refresh subscription info
-        window.location.reload();
+        setTimeout(() => window.location.reload(), 2000);
       } else {
-        alert(data.error || "Failed to cancel subscription");
+        setError(data.error || "Failed to cancel subscription");
+        setCancelConfirm(false);
       }
     } catch (e: any) {
-      alert(e.message);
+      setError(e.message);
+      setCancelConfirm(false);
     } finally {
       setCancellingSubscription(false);
     }
@@ -121,17 +134,18 @@ export default function PricingPage() {
           window.location.href = data.url;
         } else if (data.upgraded) {
           // Subscription was updated directly, no need to redirect to Stripe
-          alert(data.message || "Subscription upgraded successfully!");
-          window.location.reload();
+          setSuccess(data.message || "Subscription upgraded successfully!");
+          setTimeout(() => window.location.reload(), 2000);
         } else {
-          alert(data.error || "Failed to subscribe");
+          setError(data.error || "Failed to subscribe");
+          setLoading(null);
         }
       } else {
-        alert(data.error || "Failed to start checkout");
+        setError(data.error || "Failed to start checkout");
         setLoading(null);
       }
     } catch (e: any) {
-      alert(e.message);
+      setError(e.message);
       setLoading(null);
     }
   }
@@ -151,6 +165,60 @@ export default function PricingPage() {
           </div>
         )}
       </div>
+
+      {error && (
+        <div className="rounded-md bg-red-50 border border-red-200 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-800">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-600 hover:text-red-800"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="rounded-md bg-green-50 border border-green-200 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-green-800">{success}</p>
+            <button
+              onClick={() => setSuccess(null)}
+              className="text-green-600 hover:text-green-800"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {cancelConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Cancel Subscription</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to cancel your subscription? You'll retain access until the end of your billing period.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleCancelCancel}
+                className="px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50"
+              >
+                Keep Subscription
+              </button>
+              <button
+                onClick={handleCancelSubscription}
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                disabled={cancellingSubscription}
+              >
+                {cancellingSubscription ? "Cancelling..." : "Cancel Subscription"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-3">
         {Object.values(PLANS)
@@ -190,10 +258,10 @@ export default function PricingPage() {
                   {plan.id !== "free" && !subscriptionInfo?.cancelAtPeriodEnd && (
                     <button
                       className="w-full rounded-md bg-red-50 border border-red-300 px-4 py-2 text-red-700 text-sm hover:bg-red-100 disabled:opacity-50"
-                      onClick={handleCancelSubscription}
+                      onClick={handleCancelClick}
                       disabled={cancellingSubscription}
                     >
-                      {cancellingSubscription ? "Cancelling..." : "Cancel Subscription"}
+                      Cancel Subscription
                     </button>
                   )}
                 </>

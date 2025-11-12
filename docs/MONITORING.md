@@ -1,6 +1,6 @@
 # Monitoring & Observability Guide
 
-Complete guide for monitoring the Business Viability Calculator in production.
+Complete guide for monitoring Startup Gauge in production.
 
 ## Table of Contents
 
@@ -78,7 +78,7 @@ aws logs filter-log-events \
 **Create SNS Topic for Alerts:**
 
 1. Go to [SNS Console](https://console.aws.amazon.com/sns/)
-2. Create topic: `biz-viability-alerts`
+2. Create topic: `startup-gauge-alerts`
 3. Subscribe your email
 4. Use this topic in CloudWatch alarms
 
@@ -364,9 +364,9 @@ export async function GET() {
 
 **1. Create SNS Topic:**
 ```bash
-aws sns create-topic --name biz-viability-alerts
+aws sns create-topic --name startup-gauge-alerts
 aws sns subscribe \
-  --topic-arn arn:aws:sns:us-east-2:ACCOUNT:biz-viability-alerts \
+  --topic-arn arn:aws:sns:us-east-2:ACCOUNT:startup-gauge-alerts \
   --protocol email \
   --notification-endpoint your-email@example.com
 ```
@@ -385,7 +385,7 @@ aws cloudwatch put-metric-alarm \
   --threshold 10 \
   --comparison-operator GreaterThanThreshold \
   --evaluation-periods 1 \
-  --alarm-actions arn:aws:sns:us-east-2:ACCOUNT:biz-viability-alerts
+  --alarm-actions arn:aws:sns:us-east-2:ACCOUNT:startup-gauge-alerts
 ```
 
 **Lambda Errors:**
@@ -400,7 +400,7 @@ aws cloudwatch put-metric-alarm \
   --threshold 5 \
   --comparison-operator GreaterThanThreshold \
   --dimensions Name=FunctionName,Value=rag-ingestion-worker \
-  --alarm-actions arn:aws:sns:us-east-2:ACCOUNT:biz-viability-alerts
+  --alarm-actions arn:aws:sns:us-east-2:ACCOUNT:startup-gauge-alerts
 ```
 
 ### Dashboard Creation

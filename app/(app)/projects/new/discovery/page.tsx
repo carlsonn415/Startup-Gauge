@@ -24,6 +24,7 @@ export default function NewProjectDiscoveryPage() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     configureAmplify();
@@ -65,7 +66,7 @@ export default function NewProjectDiscoveryPage() {
               router.push(`/projects/${projectId}/details`);
             }
           } else if (data.job.status === "failed") {
-            alert("Analysis failed. Please try again.");
+            setError("Analysis failed. Please try again.");
           }
         }
       } catch (err) {
@@ -78,17 +79,18 @@ export default function NewProjectDiscoveryPage() {
 
   async function handleDiscover() {
     if (!businessIdea.trim()) {
-      alert("Business idea is required");
+      setError("Business idea is required");
       return;
     }
 
     setDiscovering(true);
+    setError(null);
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
-        alert("Please sign in");
+        setError("Please sign in");
         setDiscovering(false);
         return;
       }
@@ -132,11 +134,11 @@ export default function NewProjectDiscoveryPage() {
         const allUrls = new Set<string>(data.urls.map((u: DiscoveredUrl) => u.url));
         setSelectedUrls(allUrls);
       } else {
-        alert(data.error || "Failed to discover URLs");
+        setError(data.error || "Failed to discover URLs");
       }
     } catch (err: any) {
       console.error("Discovery error:", err);
-      alert(err.message);
+      setError(err.message);
     } finally {
       setDiscovering(false);
     }
@@ -144,22 +146,23 @@ export default function NewProjectDiscoveryPage() {
 
   async function handleAnalyze() {
     if (!projectId) {
-      alert("Project not created. Please discover URLs first.");
+      setError("Project not created. Please discover URLs first.");
       return;
     }
 
     if (selectedUrls.size === 0) {
-      alert("Please select at least one URL to analyze");
+      setError("Please select at least one URL to analyze");
       return;
     }
 
     setAnalyzing(true);
+    setError(null);
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
-        alert("Please sign in");
+        setError("Please sign in");
         setAnalyzing(false);
         return;
       }
@@ -184,11 +187,11 @@ export default function NewProjectDiscoveryPage() {
         setJobId(data.jobId);
         setAnalysisStatus(data.status);
       } else {
-        alert(data.error || "Failed to start analysis");
+        setError(data.error || "Failed to start analysis");
       }
     } catch (err: any) {
       console.error("Analysis error:", err);
-      alert(err.message);
+      setError(err.message);
     } finally {
       setAnalyzing(false);
     }
@@ -254,6 +257,20 @@ export default function NewProjectDiscoveryPage() {
           Enter your business idea and discover relevant resources to analyze
         </p>
       </div>
+
+      {error && (
+        <div className="rounded-md bg-red-50 border border-red-200 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-800">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-600 hover:text-red-800"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {urls.length === 0 ? (
         <div className="space-y-4">

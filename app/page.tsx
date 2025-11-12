@@ -70,6 +70,8 @@ export default function HomePage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Project | null>(null);
 
   useEffect(() => {
     configureAmplify();
@@ -125,21 +127,22 @@ export default function HomePage() {
     }
   }
 
+  function handleDeleteClick(project: Project) {
+    setDeleteConfirm(project);
+  }
+
+  function handleCancelDelete() {
+    setDeleteConfirm(null);
+  }
+
   async function handleDeleteProject(project: Project) {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${project.title}"? This action cannot be undone and all project data will be permanently deleted.`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
-        alert("Please sign in to delete projects");
+        setError("Please sign in to delete projects");
+        setDeleteConfirm(null);
         return;
       }
 
@@ -153,12 +156,16 @@ export default function HomePage() {
       if (data.ok) {
         // Remove project from local state
         setProjects(projects.filter((p) => p.id !== project.id));
+        setDeleteConfirm(null);
+        setError(null);
       } else {
-        alert(data.error || "Failed to delete project");
+        setError(data.error || "Failed to delete project");
+        setDeleteConfirm(null);
       }
     } catch (err: any) {
       console.error("Delete error:", err);
-      alert(`Error: ${err.message}`);
+      setError(`Error: ${err.message}`);
+      setDeleteConfirm(null);
     }
   }
 
@@ -389,10 +396,49 @@ export default function HomePage() {
           </p>
         </div>
       )}
+
+      {error && (
+        <div className="rounded-md bg-red-50 border border-red-200 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-800">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-600 hover:text-red-800"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete "{deleteConfirm.title}"? This action cannot be undone and all project data will be permanently deleted.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleCancelDelete}
+                className="px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteProject(deleteConfirm)}
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Business Viability Calculator</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Startup Gauge</h1>
           <p className="text-gray-600 mt-2">
             Analyze the viability of your business ideas with AI-powered market research
           </p>
@@ -465,7 +511,7 @@ export default function HomePage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteProject(project);
+                            handleDeleteClick(project);
                           }}
                           className="text-red-600 hover:text-red-800 text-sm px-2 py-1 rounded hover:bg-red-50"
                           title="Delete project"
@@ -509,7 +555,7 @@ export default function HomePage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteProject(project);
+                            handleDeleteClick(project);
                           }}
                           className="text-red-600 hover:text-red-800 text-sm px-2 py-1 rounded hover:bg-red-50"
                           title="Delete project"
