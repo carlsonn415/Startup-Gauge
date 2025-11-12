@@ -266,7 +266,7 @@ export default function DiscoveryPage() {
           <div>
             <label className="block text-sm font-medium mb-2">Business Idea</label>
             <textarea
-              className="w-full border rounded-md p-3 min-h-[100px]"
+              className="w-full border border-gray-300 rounded-md p-3 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white"
               value={businessIdea}
               onChange={(e) => setBusinessIdea(e.target.value)}
               placeholder="e.g., A subscription box service for eco-friendly pet products"
@@ -274,7 +274,7 @@ export default function DiscoveryPage() {
           </div>
 
           <button
-            className="w-full rounded-md bg-black px-4 py-3 text-white hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-md bg-primary-600 px-4 py-3 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 shadow-md hover:shadow-lg"
             onClick={handleDiscover}
             disabled={discovering || !businessIdea.trim()}
           >
@@ -301,7 +301,7 @@ export default function DiscoveryPage() {
                 {categoryUrls.map((url) => (
                   <div
                     key={url.url}
-                    className="border rounded-md p-4 hover:bg-gray-50 cursor-pointer"
+                    className="border border-gray-200 rounded-md p-4 bg-white hover:shadow-md transition-all cursor-pointer"
                     onClick={() => toggleUrl(url.url)}
                   >
                     <div className="flex items-start gap-3">
@@ -345,7 +345,7 @@ export default function DiscoveryPage() {
 
           <div className="flex gap-3">
             <button
-              className="flex-1 rounded-md bg-black px-4 py-3 text-white hover:opacity-90 disabled:opacity-50"
+              className="flex-1 rounded-md bg-primary-600 px-4 py-3 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 shadow-md hover:shadow-lg"
               onClick={handleAnalyze}
               disabled={ingesting || selectedUrls.size === 0}
             >

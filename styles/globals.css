@@ -2,13 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #__next {
+html {
   height: 100%;
+  min-height: 100%;
+  background-color: rgb(0, 0, 0);
+}
+
+body {
+  min-height: 100vh;
+  background: transparent;
 }
 
 @layer base {
   body {
-    @apply bg-gray-50 text-slate-800;
+    @apply text-slate-800;
   }
   
   h1, h2, h3, h4, h5, h6 {
@@ -16,9 +23,29 @@ html, body, #__next {
   }
 }
 
+@layer components {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  textarea {
+    @apply border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  
+  .bg-gradient-fast {
+    background: linear-gradient(to bottom, 
+      white 0%, 
+      white 10%, 
+      rgb(209, 213, 219) 20%, 
+      rgb(107, 114, 128) 35%, 
+      rgb(0, 0, 0) 100%);
+    background-repeat: no-repeat;
+    background-size: 100% 1000vh;
   }
 }
 

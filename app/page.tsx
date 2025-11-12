@@ -2,6 +2,7 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
+import Image from "next/image";
 import { getCurrentUser, fetchAuthSession, signInWithRedirect } from "aws-amplify/auth";
 import { configureAmplify } from "@/lib/auth/amplifyClient";
 import { getAndClearRedirectDestination, setRedirectDestination } from "@/lib/auth/redirectHelpers";
@@ -183,7 +184,7 @@ export default function HomePage() {
   // Show landing page for unauthenticated users
   if (!checkingAuth && !loading && !isAuthenticated) {
     return (
-      <main className="space-y-16">
+      <main className="space-y-8">
         <Suspense fallback={null}>
           <SearchParamsHandler onSuccess={handleSuccess} />
         </Suspense>
@@ -198,68 +199,81 @@ export default function HomePage() {
         )}
 
         {/* Hero Section */}
-        <section className="max-w-6xl mx-auto px-6 py-16 text-center">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6">
-            Validate Your Business Ideas
-            <br />
-            <span className="text-gray-600">with AI-Powered Analysis</span>
-          </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Get comprehensive viability reports with market research, competitor analysis, and financial projections—all powered by advanced AI.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={async () => {
-                try {
-                  await getCurrentUser();
-                  router.push("/projects/new/discovery");
-                } catch {
-                  setRedirectDestination("/projects/new/discovery");
-                  await signInWithRedirect();
-                }
-              }}
-              className="inline-flex items-center justify-center rounded-md bg-primary-600 px-8 py-3 text-white hover:bg-primary-700 transition-colors text-lg font-medium shadow-lg hover:shadow-xl"
-            >
-              Get Started for Free
-            </button>
-            <button
-              onClick={async () => {
-                try {
-                  await getCurrentUser();
-                  router.push("/pricing");
-                } catch {
-                  setRedirectDestination("/pricing");
-                  await signInWithRedirect();
-                }
-              }}
-              className="inline-flex items-center justify-center rounded-md border-2 border-primary-600 px-8 py-3 text-primary-700 hover:bg-primary-50 text-lg font-medium transition-colors"
-            >
-              View Pricing
-            </button>
+        <section className="max-w-6xl mx-auto px-6 py-12 mb-24">
+          <div className="grid md:grid-cols-2 gap-8 items-center">
+            <div>
+              <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6 text-slate-900 text-left">
+                Validate Your Business Ideas
+                <br />
+                <span className="bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">with AI-Powered Analysis</span>
+              </h1>
+              <p className="text-xl text-gray-600 mb-10 leading-relaxed text-left">
+                Get comprehensive viability reports with market research, competitor analysis, and financial projections—all powered by advanced AI.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={async () => {
+                    try {
+                      await getCurrentUser();
+                      router.push("/projects/new/discovery");
+                    } catch {
+                      setRedirectDestination("/projects/new/discovery");
+                      await signInWithRedirect();
+                    }
+                  }}
+                  className="inline-flex items-center justify-center rounded-md bg-primary-600 px-8 py-3 text-white hover:bg-primary-700 transition-colors text-lg font-medium shadow-lg hover:shadow-xl"
+                >
+                  Get Started for Free
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await getCurrentUser();
+                      router.push("/pricing");
+                    } catch {
+                      setRedirectDestination("/pricing");
+                      await signInWithRedirect();
+                    }
+                  }}
+                  className="inline-flex items-center justify-center rounded-md border-2 border-primary-600 px-8 py-3 text-primary-700 hover:bg-primary-50 text-lg font-medium transition-colors"
+                >
+                  View Pricing
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-center md:justify-end">
+              <Image 
+                src="/images/business_lightbulb.png" 
+                alt="Business idea validation" 
+                width={500}
+                height={500}
+                className="max-w-full h-auto"
+              />
+            </div>
           </div>
         </section>
 
         {/* Features Section */}
-        <section className="max-w-6xl mx-auto px-6 py-16">
-          <h2 className="text-3xl font-bold text-center mb-12">Everything You Need to Validate Your Idea</h2>
+        <section className="max-w-6xl mx-auto px-6 py-12">
+          <h2 className="text-3xl font-bold text-center mb-12 text-slate-900">Everything You Need to Validate Your Idea</h2>
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center p-6">
+            <div className="text-center p-6 bg-white rounded-lg border border-gray-200 shadow-soft hover:shadow-lg transition-shadow">
               <div className="text-4xl mb-4">🔍</div>
-              <h3 className="text-xl font-semibold mb-2">Market Research</h3>
+              <h3 className="text-xl font-semibold mb-2 text-slate-800">Market Research</h3>
               <p className="text-gray-600">
                 Automatically discover competitors, market reports, and industry insights relevant to your business idea.
               </p>
             </div>
-            <div className="text-center p-6">
+            <div className="text-center p-6 bg-white rounded-lg border border-gray-200 shadow-soft hover:shadow-lg transition-shadow">
               <div className="text-4xl mb-4">📊</div>
-              <h3 className="text-xl font-semibold mb-2">Viability Analysis</h3>
+              <h3 className="text-xl font-semibold mb-2 text-slate-800">Viability Analysis</h3>
               <p className="text-gray-600">
                 Get comprehensive reports with market size, risks, launch roadmap, and financial projections.
               </p>
             </div>
-            <div className="text-center p-6">
+            <div className="text-center p-6 bg-white rounded-lg border border-gray-200 shadow-soft hover:shadow-lg transition-shadow">
               <div className="text-4xl mb-4">🤖</div>
-              <h3 className="text-xl font-semibold mb-2">AI-Powered Insights</h3>
+              <h3 className="text-xl font-semibold mb-2 text-slate-800">AI-Powered Insights</h3>
               <p className="text-gray-600">
                 Leverage GPT-4 and RAG technology to get data-driven recommendations tailored to your idea.
               </p>
@@ -268,27 +282,27 @@ export default function HomePage() {
         </section>
 
         {/* How It Works */}
-        <section className="bg-gray-50 py-16">
+        <section className="py-12">
           <div className="max-w-6xl mx-auto px-6">
-            <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
+            <h2 className="text-3xl font-bold text-center mb-12 text-slate-900">How It Works</h2>
             <div className="grid md:grid-cols-3 gap-8">
-              <div className="bg-white p-6 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600 mb-2">1</div>
-                <h3 className="text-xl font-semibold mb-3">Discover Resources</h3>
+              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-soft hover:shadow-lg transition-shadow">
+                <div className="text-2xl font-bold text-primary-600 mb-2">1</div>
+                <h3 className="text-xl font-semibold mb-3 text-slate-800">Discover Resources</h3>
                 <p className="text-gray-600">
                   Enter your business idea and we'll automatically find relevant competitors, market reports, and industry news.
                 </p>
               </div>
-              <div className="bg-white p-6 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600 mb-2">2</div>
-                <h3 className="text-xl font-semibold mb-3">Analyze & Process</h3>
+              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-soft hover:shadow-lg transition-shadow">
+                <div className="text-2xl font-bold text-primary-600 mb-2">2</div>
+                <h3 className="text-xl font-semibold mb-3 text-slate-800">Analyze & Process</h3>
                 <p className="text-gray-600">
                   Select the resources you want to analyze. Our AI processes them to extract key insights and data.
                 </p>
               </div>
-              <div className="bg-white p-6 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600 mb-2">3</div>
-                <h3 className="text-xl font-semibold mb-3">Get Your Report</h3>
+              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-soft hover:shadow-lg transition-shadow">
+                <div className="text-2xl font-bold text-primary-600 mb-2">3</div>
+                <h3 className="text-xl font-semibold mb-3 text-slate-800">Get Your Report</h3>
                 <p className="text-gray-600">
                   Receive a comprehensive viability report with market size, risks, roadmap, and financial projections.
                 </p>
@@ -298,9 +312,9 @@ export default function HomePage() {
         </section>
 
         {/* Pricing Preview */}
-        <section className="max-w-6xl mx-auto px-6 py-16">
-          <h2 className="text-3xl font-bold text-center mb-4">Simple, Transparent Pricing</h2>
-          <p className="text-center text-gray-600 mb-12">Start free, upgrade when you need more</p>
+        <section className="max-w-6xl mx-auto px-6 py-12">
+          <h2 className="text-3xl font-bold text-center mb-4 text-white">Simple, Transparent Pricing</h2>
+          <p className="text-center text-gray-200 mb-12">Start free, upgrade when you need more</p>
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <div className="border border-gray-200 rounded-lg p-6 flex flex-col bg-white shadow-soft hover:shadow-lg transition-shadow">
               <h3 className="text-xl font-semibold mb-2 text-slate-800">Free</h3>
@@ -379,10 +393,10 @@ export default function HomePage() {
         </section>
 
         {/* CTA Section */}
-        <section className="bg-black text-white py-16">
-          <div className="max-w-4xl mx-auto px-6 text-center">
-            <h2 className="text-3xl font-bold mb-4">Ready to Validate Your Idea?</h2>
-            <p className="text-xl text-gray-300 mb-8">
+        <section className="bg-gradient-to-br from-primary-700 via-primary-600 to-primary-800 text-white py-20 -mx-6 px-6 w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] mb-0 pb-20 -mb-6">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Validate Your Idea?</h2>
+            <p className="text-xl text-primary-100 mb-10 leading-relaxed">
               Join entrepreneurs who use AI-powered analysis to make data-driven decisions.
             </p>
             <button
@@ -395,7 +409,7 @@ export default function HomePage() {
                   await signInWithRedirect();
                 }
               }}
-              className="inline-flex items-center rounded-md bg-white px-8 py-3 text-black hover:opacity-90 text-lg font-medium"
+              className="inline-flex items-center rounded-md bg-white px-8 py-4 text-primary-700 hover:bg-primary-50 transition-colors text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:-translate-y-0.5 transition-all"
             >
               Start Your First Project
             </button>
@@ -461,13 +475,13 @@ export default function HomePage() {
       {!checkingAuth && !loading && isAuthenticated && (
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xl text-gray-600">
+            <p className="text-xl text-slate-900">
               Analyze the viability of your business ideas with AI-powered market research
             </p>
           </div>
           {projects.length > 0 && (
             <button
-              className="inline-flex items-center rounded-md bg-black px-4 py-2 text-white hover:opacity-90"
+              className="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700 transition-colors shadow-md hover:shadow-lg"
               onClick={() => {
                 router.push("/projects/new/discovery");
               }}
@@ -486,7 +500,7 @@ export default function HomePage() {
         <div className="text-center py-12 border rounded-lg">
           <p className="text-gray-600 mb-4">No projects yet.</p>
             <button
-              className="inline-flex items-center rounded-md bg-black px-4 py-2 text-white hover:opacity-90"
+              className="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700 transition-colors shadow-md hover:shadow-lg"
               onClick={async () => {
                 try {
                   await getCurrentUser();
@@ -511,7 +525,7 @@ export default function HomePage() {
                 {inProgressProjects.map((project) => (
                   <div
                     key={project.id}
-                    className="border rounded-lg p-4 hover:bg-gray-50"
+                    className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-all cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       <div 
@@ -534,7 +548,7 @@ export default function HomePage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                        <span className="text-xs bg-warning-100 text-warning-800 px-2 py-1 rounded font-medium">
                           In Progress
                         </span>
                         <button
@@ -562,7 +576,7 @@ export default function HomePage() {
                 {completedProjects.map((project) => (
                   <div
                     key={project.id}
-                    className="border rounded-lg p-4 hover:bg-gray-50"
+                    className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-all cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       <div 
@@ -575,15 +589,21 @@ export default function HomePage() {
                             {project.description}
                           </p>
                         )}
-                        <p className="text-sm text-gray-500 mt-1">
-                          Confidence Score: {project.confidenceScore !== null ? `${project.confidenceScore}%` : "Not Available"}
+                        <p className="text-sm mt-1">
+                          Confidence Score: {project.confidenceScore !== null ? (
+                            <span className={project.confidenceScore > 50 ? "text-success-600 font-semibold" : "text-danger-600 font-semibold"}>
+                              {project.confidenceScore}%
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">Not Available</span>
+                          )}
                         </p>
                         <p className="text-xs text-gray-500 mt-2">
                           Completed {new Date(project.updatedAt).toLocaleDateString()}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                        <span className="text-xs bg-success-100 text-success-700 px-2 py-1 rounded font-medium">
                           Completed
                         </span>
                         <button

@@ -167,7 +167,7 @@ function PricingContent() {
   return (
     <main className="space-y-8">
       <div className="text-center">
-        <h1 className="text-3xl font-bold">Pricing</h1>
+        <h1 className="text-3xl font-bold text-slate-800">Pricing</h1>
         <p className="mt-2 text-gray-600">Choose a plan that fits your needs</p>
         
         {outOfCredits && (
@@ -264,12 +264,19 @@ function PricingContent() {
           .map((plan) => (
           <div
             key={plan.id}
-            className="flex flex-col rounded-lg border bg-white p-6 shadow-sm"
+            className={`flex flex-col rounded-lg border bg-white p-6 shadow-soft transition-all hover:shadow-lg ${
+              plan.id === "starter" ? "border-2 border-primary-600 relative" : "border-gray-200"
+            }`}
           >
-            <h3 className="text-xl font-semibold">{plan.name}</h3>
+            {plan.id === "starter" && (
+              <div className="absolute top-0 right-0 bg-primary-600 text-white text-xs px-3 py-1 rounded-bl-lg font-semibold">
+                Popular
+              </div>
+            )}
+            <h3 className="text-xl font-semibold text-slate-800">{plan.name}</h3>
             <div className="mt-4">
-              <span className="text-4xl font-bold">${plan.priceMonthly}</span>
-              <span className="text-gray-600">/month</span>
+              <span className="text-4xl font-bold text-slate-900">${plan.priceMonthly}</span>
+              <span className="text-gray-500">/month</span>
             </div>
             <ul className="mt-6 space-y-3">
               {plan.features.map((feature, idx) => (
@@ -312,7 +319,7 @@ function PricingContent() {
                 </button>
               ) : (
                 <button
-                  className="w-full rounded-md bg-black px-4 py-2 text-white hover:opacity-90 disabled:opacity-50"
+                  className="w-full rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 shadow-md hover:shadow-lg"
                   onClick={() => handleSubscribe(plan.id)}
                   disabled={loading === plan.id}
                 >

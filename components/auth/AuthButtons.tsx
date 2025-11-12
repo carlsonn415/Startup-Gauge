@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { signInWithRedirect, signOut, getCurrentUser, fetchAuthSession } from "aws-amplify/auth";
 import { configureAmplify } from "@/lib/auth/amplifyClient";
+import { useRouter } from "next/navigation";
 
 export default function AuthButtons() {
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPlan, setCurrentPlan] = useState<string>("Free");
   const [error, setError] = useState<string | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     configureAmplify();
@@ -48,6 +52,23 @@ export default function AuthButtons() {
     })();
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+
+    if (showDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showDropdown]);
+
   async function handleSignIn() {
     try {
       // Ensure Amplify is configured before signing in
@@ -64,9 +85,16 @@ export default function AuthButtons() {
     try {
       await signOut();
       setEmail(null);
+      setShowDropdown(false);
+      router.push("/");
     } catch (e) {
       console.error(e);
     }
+  }
+
+  function handleUpgrade() {
+    setShowDropdown(false);
+    router.push("/pricing");
   }
 
   if (loading) {
@@ -92,26 +120,52 @@ export default function AuthButtons() {
           </div>
         </div>
       )}
-      <div className="flex items-center gap-3">
+      <div className="relative" ref={dropdownRef}>
         {email ? (
-        <>
-          <span className="text-xs text-gray-500">{currentPlan} Plan</span>
-          <a
-            href="/pricing"
-            className="rounded-md bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
+          <>
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="rounded-md bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700 transition-colors shadow-md hover:shadow-lg flex items-center gap-2"
+            >
+              <span>{email}</span>
+              <svg
+                className={`w-4 h-4 transition-transform ${showDropdown ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {showDropdown && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
+                <div className="px-4 py-2 border-b border-gray-200">
+                  <p className="text-xs text-gray-500">Current Plan</p>
+                  <p className="text-sm font-medium text-slate-800">{currentPlan}</p>
+                </div>
+                <button
+                  onClick={handleUpgrade}
+                  className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-gray-50 transition-colors"
+                >
+                  Upgrade Plan
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-gray-50 transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <button
+            className="rounded-md bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700 transition-colors shadow-md hover:shadow-lg"
+            onClick={handleSignIn}
           >
-            Upgrade
-          </a>
-          <span className="text-sm text-gray-700">{email}</span>
-          <button className="rounded-md bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300" onClick={handleSignOut}>
-            Sign out
+            Sign In
           </button>
-        </>
-      ) : (
-        <button className="rounded-md bg-black px-3 py-1 text-sm text-white hover:opacity-90" onClick={handleSignIn}>
-          Sign in
-        </button>
-      )}
+        )}
       </div>
     </div>
   );

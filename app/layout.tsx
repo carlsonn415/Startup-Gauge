@@ -22,12 +22,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" className="scroll-smooth bg-gradient-fast">
       <head>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
       </head>
       <body className="min-h-screen antialiased">
-        <div className="mx-auto max-w-6xl px-4 py-6">
+        <div className="mx-auto max-w-6xl px-4 pt-6 pb-0">
           <header className="mb-6 flex items-center justify-between">
             <a href="/" className="font-semibold text-xl text-primary-700 hover:text-primary-600 transition-colors">Startup Gauge</a>
             <AuthButtons />

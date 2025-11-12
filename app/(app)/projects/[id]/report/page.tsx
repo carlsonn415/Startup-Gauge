@@ -380,7 +380,7 @@ export default function ProjectReportPage() {
           <button
             onClick={handleExportPdf}
             disabled={exportingPdf}
-            className="rounded-md bg-black px-4 py-2 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md hover:shadow-lg"
           >
             {exportingPdf ? (
               <>
@@ -409,14 +409,14 @@ export default function ProjectReportPage() {
 
       <div className="space-y-6">
         {/* Summary */}
-        <section className="bg-white border rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-3">Executive Summary</h2>
+        <section className="bg-white border-l-4 border-l-primary-600 rounded-lg p-6 shadow-soft">
+          <h2 className="text-xl font-semibold mb-3 text-slate-800">Executive Summary</h2>
           <p className="text-gray-700 leading-relaxed">{analysis.summary}</p>
         </section>
 
         {/* Market Size */}
-        <section className="bg-white border rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-3">Market Size</h2>
+        <section className="bg-white border-l-4 border-l-primary-500 rounded-lg p-6 shadow-soft">
+          <h2 className="text-xl font-semibold mb-3 text-slate-800">Market Size</h2>
           {analysis.marketSizeUsd >= 1_000_000_000 ? (
             <p className="text-2xl font-bold text-gray-900">
               ${(analysis.marketSizeUsd / 1_000_000_000).toFixed(2)}B
@@ -443,8 +443,8 @@ export default function ProjectReportPage() {
         </section>
 
         {/* Risks */}
-        <section className="bg-white border rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-3">Key Risks</h2>
+        <section className="bg-white border-l-4 border-l-warning-500 rounded-lg p-6 shadow-soft">
+          <h2 className="text-xl font-semibold mb-3 text-slate-800">Key Risks</h2>
           <ul className="space-y-4">
             {analysis.risks.map((risk: any, idx: number) => {
               // Handle both old format (string) and new format (object)
@@ -462,10 +462,10 @@ export default function ProjectReportPage() {
               const colorClass = severityColors[severity] || severityColors.medium;
               
               return (
-                <li key={idx} className="border rounded-lg p-4">
+                <li key={idx} className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <div className="flex items-start gap-2 flex-1">
-                      <span className="text-red-500 mt-1">⚠️</span>
+                      <span className="text-warning-600 mt-1 text-xl">⚠️</span>
                       <span className="text-gray-700 font-medium leading-normal">{riskObj.description}</span>
                     </div>
                     <div className="flex items-center justify-center flex-shrink-0" style={{ height: '1.75rem' }}>
@@ -484,18 +484,18 @@ export default function ProjectReportPage() {
         </section>
 
         {/* Steps */}
-        <section className="bg-white border rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-3">Launch Roadmap</h2>
+        <section className="bg-white border-l-4 border-l-primary-400 rounded-lg p-6 shadow-soft">
+          <h2 className="text-xl font-semibold mb-3 text-slate-800">Launch Roadmap</h2>
           <div className="space-y-4">
             {analysis.steps.map((step: any, idx: number) => (
-              <div key={idx} className="border-l-4 border-blue-500 pl-4">
+              <div key={idx} className="border-l-4 border-primary-500 pl-4 py-2 hover:bg-primary-50 rounded-r-lg transition-colors">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-blue-600">Step {idx + 1}</span>
+                  <span className="text-sm font-medium text-primary-700">Step {idx + 1}</span>
                   <span className="text-sm text-gray-500">
                     ({step.durationWeeks} weeks)
                   </span>
                 </div>
-                <h3 className="font-semibold text-gray-900">{step.title}</h3>
+                <h3 className="font-semibold text-slate-800">{step.title}</h3>
                 <p className="text-gray-700 mt-1">{step.description}</p>
               </div>
             ))}
@@ -503,8 +503,8 @@ export default function ProjectReportPage() {
         </section>
 
         {/* Profit Model */}
-        <section className="bg-white border rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Financial Projections</h2>
+        <section className="bg-white border-l-4 border-l-success-500 rounded-lg p-6 shadow-soft">
+          <h2 className="text-xl font-semibold mb-4 text-slate-800">Financial Projections</h2>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <p className="text-sm text-gray-600">Customer Acquisition Cost</p>
@@ -554,14 +554,14 @@ export default function ProjectReportPage() {
         </section>
 
         {/* Confidence */}
-        <section className="bg-white border rounded-lg p-6">
+        <section className="bg-white border-l-4 border-l-primary-600 rounded-lg p-6 shadow-soft">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-xl font-semibold mb-1">Confidence Score</h2>
+              <h2 className="text-xl font-semibold mb-1 text-slate-800">Confidence Score</h2>
               <p className="text-sm text-gray-600">Based on market data and analysis</p>
             </div>
             <div className="text-right">
-              <p className="text-4xl font-bold text-blue-600">{analysis.confidencePct}%</p>
+              <p className="text-4xl font-bold text-primary-600">{analysis.confidencePct}%</p>
             </div>
           </div>
           {analysis.confidenceReasoning && (
@@ -575,8 +575,8 @@ export default function ProjectReportPage() {
     </div>
 
       {/* AI Chat Section */}
-      <section className="bg-white border rounded-lg p-6 mt-6">
-        <h2 className="text-xl font-semibold mb-4">Ask Questions About This Report</h2>
+      <section className="bg-white border-l-4 border-l-primary-500 rounded-lg p-6 mt-6 shadow-soft">
+        <h2 className="text-xl font-semibold mb-4 text-slate-800">Ask Questions About This Report</h2>
         <p className="text-sm text-gray-600 mb-4">
           Get additional insights about your viability report. Each question is answered independently using available market research data.
           {!isProPlan && (
@@ -599,7 +599,7 @@ export default function ProjectReportPage() {
                   }
                 }}
                 placeholder="Ask a question about this viability report... (Cmd/Ctrl + Enter to submit)"
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent resize-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none transition-all bg-white"
                 rows={4}
                 disabled={chatLoading}
               />
@@ -611,8 +611,8 @@ export default function ProjectReportPage() {
             )}
             <button
               onClick={handleAskQuestion}
-              disabled={!chatQuestion.trim() || chatLoading}
-              className="rounded-md bg-black px-4 py-2 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                disabled={!chatQuestion.trim() || chatLoading}
+                className="rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md hover:shadow-lg"
             >
               {chatLoading ? (
                 <>
