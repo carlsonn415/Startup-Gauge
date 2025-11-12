@@ -8,6 +8,7 @@ export default function AuthButtons() {
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPlan, setCurrentPlan] = useState<string>("Free");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     configureAmplify();
@@ -54,7 +55,8 @@ export default function AuthButtons() {
       await signInWithRedirect();
     } catch (e) {
       console.error("Sign in error:", e);
-      alert("Failed to sign in. Please check your browser console for details.");
+      setError("Failed to sign in. Please check your browser console for details.");
+      setTimeout(() => setError(null), 5000);
     }
   }
 
@@ -76,8 +78,22 @@ export default function AuthButtons() {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      {email ? (
+    <div className="flex flex-col items-end gap-2">
+      {error && (
+        <div className="rounded-md bg-red-50 border border-red-200 p-2 text-xs max-w-xs">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-red-800">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-600 hover:text-red-800"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="flex items-center gap-3">
+        {email ? (
         <>
           <span className="text-xs text-gray-500">{currentPlan} Plan</span>
           <a
@@ -96,6 +112,7 @@ export default function AuthButtons() {
           Sign in
         </button>
       )}
+      </div>
     </div>
   );
 }

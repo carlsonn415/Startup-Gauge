@@ -26,7 +26,7 @@ Get your RAG (Retrieval-Augmented Generation) system up and running in under 30 
 
 1. Log into AWS Console
 2. Go to **IAM** → **Users** → **Add user**
-3. User name: `biz-viability-lambda-invoker`
+3. User name: `startup-gauge-lambda-invoker`
 4. Select "Access key - Programmatic access"
 5. Click **Next: Permissions**
 6. Choose "Attach existing policies directly"

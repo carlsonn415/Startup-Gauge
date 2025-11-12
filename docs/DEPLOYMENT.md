@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Complete guide for deploying the Business Viability Calculator to AWS Amplify.
+Complete guide for deploying Startup Gauge to AWS Amplify.
 
 ## Table of Contents
 
@@ -38,7 +38,7 @@ Before deploying, ensure you have:
 2. Click **"New app"** → **"Host web app"**
 3. Select **"GitHub"** as your source
 4. Authorize AWS Amplify to access your GitHub account
-5. Select your repository: `Business-Viability-Calculator`
+5. Select your repository: `startup-gauge`
 6. Select the branch: `main` (or your production branch)
 
 ### Step 2: Configure Build Settings
@@ -177,7 +177,7 @@ SELECT * FROM pg_extension WHERE extname = 'vector';
 4. Configure password policy (recommended: 8+ chars, mixed case, numbers)
 5. Enable **MFA** (optional but recommended)
 6. Configure **App integration**:
-   - App client name: `biz-viability-app`
+   - App client name: `startup-gauge-app`
    - Enable **OpenID Connect (OIDC)**
    - Allowed callback URLs: `https://your-domain.com, https://your-domain.com/*`
    - Allowed sign-out URLs: `https://your-domain.com`
@@ -187,8 +187,8 @@ SELECT * FROM pg_extension WHERE extname = 'vector';
 
 1. In your User Pool, go to **"App integration"** tab
 2. Under **"Domain"**, click **"Create Cognito domain"**
-3. Choose a domain prefix (e.g., `biz-viability-auth`)
-4. Save the domain (e.g., `biz-viability-auth.auth.us-east-2.amazoncognito.com`)
+3. Choose a domain prefix (e.g., `startup-gauge-auth`)
+4. Save the domain (e.g., `startup-gauge-auth.auth.us-east-2.amazoncognito.com`)
 
 ### Step 3: Get Configuration Values
 

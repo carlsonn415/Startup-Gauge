@@ -21,7 +21,7 @@ Before starting, ensure you have:
 1. Go to [AWS Amplify Console](https://console.aws.amazon.com/amplify/)
 2. Click **"New app"** → **"Host web app"**
 3. Select **"GitHub"** and authorize
-4. Select repository: `Business-Viability-Calculator`
+4. Select repository: `startup-gauge`
 5. Select branch: `main`
 6. Click **"Next"**
 

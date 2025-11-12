@@ -38,10 +38,10 @@ export default function ProjectReportPage() {
         if (res.ok) {
           const response = await res.json();
           if (response.ok && response.data) {
-            const project = response.data;
-            setProject(project);
-            if (project.latestAnalysis?.output) {
-              setAnalysis(project.latestAnalysis.output);
+            const projectData = response.data;
+            setProject(projectData);
+            if (projectData.latestAnalysis?.output) {
+              setAnalysis(projectData.latestAnalysis.output);
             } else {
               // No analysis found, but don't redirect - show the "no analysis" message
               setAnalysis(null);
@@ -108,8 +108,11 @@ export default function ProjectReportPage() {
     <main className="max-w-4xl mx-auto space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{project?.businessIdea || "Viability Report"}</h1>
-          <p className="text-gray-600 mt-1">Business Viability Analysis</p>
+          <h1 className="text-3xl font-bold">{project?.title || project?.businessIdea || "Viability Report"}</h1>
+          {project?.description && (
+            <p className="text-gray-600 mt-1">{project.description}</p>
+          )}
+          <p className="text-gray-500 mt-1 text-sm">Business Viability Analysis</p>
         </div>
         <button
           onClick={() => router.push("/")}
@@ -129,25 +132,67 @@ export default function ProjectReportPage() {
         {/* Market Size */}
         <section className="bg-white border rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-3">Market Size</h2>
-          <p className="text-2xl font-bold text-gray-900">
-            ${(analysis.marketSizeUsd / 1_000_000_000).toFixed(2)}B
-          </p>
-          <p className="text-sm text-gray-600 mt-1">Estimated market size</p>
-          <p className="text-sm text-gray-500 mt-2">
-            This represents the total addressable market (TAM) - the total revenue opportunity available if you captured 100% of the market. It helps you understand the potential scale of your business opportunity.
-          </p>
+          {analysis.marketSizeUsd >= 1_000_000_000 ? (
+            <p className="text-2xl font-bold text-gray-900">
+              ${(analysis.marketSizeUsd / 1_000_000_000).toFixed(2)}B
+            </p>
+          ) : analysis.marketSizeUsd >= 1_000_000 ? (
+            <p className="text-2xl font-bold text-gray-900">
+              ${(analysis.marketSizeUsd / 1_000_000).toFixed(2)}M
+            </p>
+          ) : analysis.marketSizeUsd >= 1_000 ? (
+            <p className="text-2xl font-bold text-gray-900">
+              ${(analysis.marketSizeUsd / 1_000).toFixed(2)}K
+            </p>
+          ) : (
+            <p className="text-2xl font-bold text-gray-900">
+              ${analysis.marketSizeUsd.toLocaleString()}
+            </p>
+          )}
+          <p className="text-sm text-gray-600 mt-1">Total Addressable Market (TAM)</p>
+          {analysis.marketSizeExplanation && (
+            <p className="text-sm text-gray-500 mt-2">
+              {analysis.marketSizeExplanation}
+            </p>
+          )}
         </section>
 
         {/* Risks */}
         <section className="bg-white border rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-3">Key Risks</h2>
-          <ul className="space-y-2">
-            {analysis.risks.map((risk: string, idx: number) => (
-              <li key={idx} className="flex items-start gap-2">
-                <span className="text-red-500 mt-1">⚠️</span>
-                <span className="text-gray-700">{risk}</span>
-              </li>
-            ))}
+          <ul className="space-y-4">
+            {analysis.risks.map((risk: any, idx: number) => {
+              // Handle both old format (string) and new format (object)
+              const riskObj = typeof risk === 'string' 
+                ? { description: risk, severity: 'medium' as const, impact: '' }
+                : risk;
+              
+              const severityColors: Record<string, string> = {
+                high: 'bg-red-100 text-red-800 border-red-300',
+                medium: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                low: 'bg-blue-100 text-blue-800 border-blue-300',
+              };
+              
+              const severity = riskObj.severity || 'medium';
+              const colorClass = severityColors[severity] || severityColors.medium;
+              
+              return (
+                <li key={idx} className="border rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex items-start gap-2 flex-1">
+                      <span className="text-red-500 mt-1">⚠️</span>
+                      <span className="text-gray-700 font-medium">{riskObj.description}</span>
+                    </div>
+                    <span className={`px-2 py-1 rounded text-xs font-semibold border ${colorClass}`}>
+                      {severity.toUpperCase()}
+                    </span>
+                  </div>
+                  {riskObj.impact && (
+                    <p className="text-sm text-gray-600 ml-7 mt-1">{riskObj.impact}</p>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
 
@@ -223,7 +268,7 @@ export default function ProjectReportPage() {
 
         {/* Confidence */}
         <section className="bg-white border rounded-lg p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-xl font-semibold mb-1">Confidence Score</h2>
               <p className="text-sm text-gray-600">Based on market data and analysis</p>
@@ -232,6 +277,12 @@ export default function ProjectReportPage() {
               <p className="text-4xl font-bold text-blue-600">{analysis.confidencePct}%</p>
             </div>
           </div>
+          {analysis.confidenceReasoning && (
+            <div className="mt-4 pt-4 border-t">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">Reasoning</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">{analysis.confidenceReasoning}</p>
+            </div>
+          )}
         </section>
       </div>
     </main>

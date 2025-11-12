@@ -24,13 +24,21 @@ export const ProfitModelSchema = z.object({
   ),
 });
 
+export const RiskSchema = z.object({
+  description: z.string(),
+  severity: z.enum(["high", "medium", "low"]),
+  impact: z.string(), // Explanation of why this risk matters
+});
+
 export const ViabilityOutputSchema = z.object({
   summary: z.string(),
   marketSizeUsd: z.number().nonnegative(),
-  risks: z.array(z.string()).max(10),
+  marketSizeExplanation: z.string(), // Explanation of how market size was calculated
+  risks: z.array(RiskSchema).max(10),
   steps: z.array(StepSchema).min(3),
   profitModel: ProfitModelSchema,
   confidencePct: z.number().min(0).max(100),
+  confidenceReasoning: z.string(), // Explanation of why this confidence score was assigned
 });
 export type ViabilityOutput = z.infer<typeof ViabilityOutputSchema>;
 

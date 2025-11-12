@@ -1,23 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PLANS } from "@/lib/stripe/plans";
 import { fetchAuthSession, getCurrentUser, signInWithRedirect } from "aws-amplify/auth";
 import { configureAmplify } from "@/lib/auth/amplifyClient";
+import { setRedirectDestination, getAndClearRedirectDestination } from "@/lib/auth/redirectHelpers";
 
-export default function PricingPage() {
+function PricingContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState<string | null>(null);
   const [currentPlanId, setCurrentPlanId] = useState<string>("free");
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [cancellingSubscription, setCancellingSubscription] = useState(false);
   const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [cancelConfirm, setCancelConfirm] = useState(false);
+  const outOfCredits = searchParams?.get("outOfCredits") === "true";
 
   useEffect(() => {
     configureAmplify();
     (async () => {
       try {
+        // Check for redirect destination after sign-in
+        const redirectPath = getAndClearRedirectDestination();
+        if (redirectPath && redirectPath !== "/pricing") {
+          router.push(redirectPath);
+          return;
+        }
+        
         const session = await fetchAuthSession();
         const idToken = session.tokens?.idToken?.toString();
         
@@ -37,20 +50,27 @@ export default function PricingPage() {
         setLoadingPlan(false);
       }
     })();
-  }, []);
+  }, [router]);
+
+  function handleCancelClick() {
+    setCancelConfirm(true);
+  }
+
+  function handleCancelCancel() {
+    setCancelConfirm(false);
+  }
 
   async function handleCancelSubscription() {
-    if (!confirm("Are you sure you want to cancel your subscription? You'll retain access until the end of your billing period.")) {
-      return;
-    }
-
     setCancellingSubscription(true);
+    setError(null);
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
-        alert("Please sign in");
+        setError("Please sign in");
+        setCancelConfirm(false);
+        setCancellingSubscription(false);
         return;
       }
 
@@ -61,14 +81,17 @@ export default function PricingPage() {
 
       const data = await res.json();
       if (data.ok) {
-        alert(data.message);
+        setSuccess(data.message);
+        setCancelConfirm(false);
         // Refresh subscription info
-        window.location.reload();
+        setTimeout(() => window.location.reload(), 2000);
       } else {
-        alert(data.error || "Failed to cancel subscription");
+        setError(data.error || "Failed to cancel subscription");
+        setCancelConfirm(false);
       }
     } catch (e: any) {
-      alert(e.message);
+      setError(e.message);
+      setCancelConfirm(false);
     } finally {
       setCancellingSubscription(false);
     }
@@ -91,6 +114,7 @@ export default function PricingPage() {
         await getCurrentUser();
       } catch {
         // Not authenticated, redirect to sign in
+        setRedirectDestination("/pricing");
         await signInWithRedirect();
         setLoading(null);
         return;
@@ -100,6 +124,7 @@ export default function PricingPage() {
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
+        setRedirectDestination("/pricing");
         await signInWithRedirect();
         setLoading(null);
         return;
@@ -121,17 +146,18 @@ export default function PricingPage() {
           window.location.href = data.url;
         } else if (data.upgraded) {
           // Subscription was updated directly, no need to redirect to Stripe
-          alert(data.message || "Subscription upgraded successfully!");
-          window.location.reload();
+          setSuccess(data.message || "Subscription upgraded successfully!");
+          setTimeout(() => window.location.reload(), 2000);
         } else {
-          alert(data.error || "Failed to subscribe");
+          setError(data.error || "Failed to subscribe");
+          setLoading(null);
         }
       } else {
-        alert(data.error || "Failed to start checkout");
+        setError(data.error || "Failed to start checkout");
         setLoading(null);
       }
     } catch (e: any) {
-      alert(e.message);
+      setError(e.message);
       setLoading(null);
     }
   }
@@ -142,6 +168,14 @@ export default function PricingPage() {
         <h1 className="text-3xl font-bold">Pricing</h1>
         <p className="mt-2 text-gray-600">Choose a plan that fits your needs</p>
         
+        {outOfCredits && (
+          <div className="mt-4 inline-block rounded-md bg-red-50 border border-red-200 px-4 py-2 max-w-2xl">
+            <p className="text-sm text-red-800 font-medium">
+              You've reached your monthly analysis limit. Upgrade your plan to get more analyses this month.
+            </p>
+          </div>
+        )}
+        
         {subscriptionInfo?.cancelAtPeriodEnd && (
           <div className="mt-4 inline-block rounded-md bg-yellow-50 border border-yellow-200 px-4 py-2">
             <p className="text-sm text-yellow-800">
@@ -151,6 +185,60 @@ export default function PricingPage() {
           </div>
         )}
       </div>
+
+      {error && (
+        <div className="rounded-md bg-red-50 border border-red-200 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-800">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-600 hover:text-red-800"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="rounded-md bg-green-50 border border-green-200 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-green-800">{success}</p>
+            <button
+              onClick={() => setSuccess(null)}
+              className="text-green-600 hover:text-green-800"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {cancelConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Cancel Subscription</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to cancel your subscription? You'll retain access until the end of your billing period.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleCancelCancel}
+                className="px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50"
+              >
+                Keep Subscription
+              </button>
+              <button
+                onClick={handleCancelSubscription}
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                disabled={cancellingSubscription}
+              >
+                {cancellingSubscription ? "Cancelling..." : "Cancel Subscription"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-3">
         {Object.values(PLANS)
@@ -190,10 +278,10 @@ export default function PricingPage() {
                   {plan.id !== "free" && !subscriptionInfo?.cancelAtPeriodEnd && (
                     <button
                       className="w-full rounded-md bg-red-50 border border-red-300 px-4 py-2 text-red-700 text-sm hover:bg-red-100 disabled:opacity-50"
-                      onClick={handleCancelSubscription}
+                      onClick={handleCancelClick}
                       disabled={cancellingSubscription}
                     >
-                      {cancellingSubscription ? "Cancelling..." : "Cancel Subscription"}
+                      Cancel Subscription
                     </button>
                   )}
                 </>
@@ -223,6 +311,24 @@ export default function PricingPage() {
         ))}
       </div>
     </main>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={
+      <main className="space-y-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold">Pricing</h1>
+          <p className="mt-2 text-gray-600">Choose a plan that fits your needs</p>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="w-8 h-8 border-4 border-gray-200 border-t-black rounded-full animate-spin" />
+        </div>
+      </main>
+    }>
+      <PricingContent />
+    </Suspense>
   );
 }
 

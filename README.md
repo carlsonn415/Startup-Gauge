@@ -1,4 +1,4 @@
-# Business Viability Calculator
+# Startup Gauge
 
 > AI-powered business analysis platform with RAG-enhanced market research, built with Next.js 14, OpenAI, and AWS.
 
@@ -13,7 +13,7 @@
 
 ## 🎯 Overview
 
-Business Viability Calculator is a full-stack SaaS application that leverages AI to analyze business ideas and provide comprehensive viability assessments. The platform combines structured analysis with RAG (Retrieval-Augmented Generation) to deliver data-driven insights backed by real market research.
+Startup Gauge is a full-stack SaaS application that leverages AI to analyze business ideas and provide comprehensive viability assessments. The platform combines structured analysis with RAG (Retrieval-Augmented Generation) to deliver data-driven insights backed by real market research.
 
 ### Key Features
 
@@ -144,7 +144,7 @@ Features:
 
 ```bash
 git clone <repository-url>
-cd Business-Viability-Calculator
+cd startup-gauge
 npm install
 ```
 

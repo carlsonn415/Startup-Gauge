@@ -19,13 +19,13 @@ export default function ProjectDetailsPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [project, setProject] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     configureAmplify();
     (async () => {
       try {
         await getCurrentUser();
-        setCheckingAuth(false);
         
         // Fetch project details
         const session = await fetchAuthSession();
@@ -37,6 +37,25 @@ export default function ProjectDetailsPage() {
           return;
         }
         
+        // Check usage limits before allowing analysis generation
+        const usageRes = await fetch("/api/user/usage", {
+          headers: { authorization: `Bearer ${idToken}` },
+        });
+        
+        if (usageRes.ok) {
+          const usageData = await usageRes.json();
+          if (usageData.ok && usageData.data) {
+            // If no remaining analyses, redirect to pricing page
+            if (usageData.data.remaining <= 0) {
+              console.log("User out of credits, redirecting to pricing");
+              router.push("/pricing?outOfCredits=true");
+              return;
+            }
+          }
+        }
+        
+        setCheckingAuth(false);
+        
         try {
           const res = await fetch(`/api/projects/${projectId}`, {
             headers: { authorization: `Bearer ${idToken}` },
@@ -46,7 +65,8 @@ export default function ProjectDetailsPage() {
             const data = await res.json();
             if (data.ok && data.data) {
               setProject(data.data);
-              setIdea(data.data.businessIdea || data.data.title || "");
+              // Use description if available, otherwise fall back to businessIdea or title
+              setIdea(data.data.description || data.data.businessIdea || data.data.title || "");
               setError(null);
             } else {
               console.error("Invalid response format:", data);
@@ -82,20 +102,39 @@ export default function ProjectDetailsPage() {
 
   async function analyze() {
     if (!idea.trim() || !targetMarket.trim()) {
-      alert("Idea and target market are required");
+      setFormError("Idea and target market are required");
       return;
     }
 
     setLoading(true);
     setResult(null);
+    setFormError(null);
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
-        alert("Please sign in");
+        setFormError("Please sign in");
         setLoading(false);
         return;
+      }
+      
+      // Double-check usage limits before generating analysis
+      const usageRes = await fetch("/api/user/usage", {
+        headers: { authorization: `Bearer ${idToken}` },
+      });
+      
+      if (usageRes.ok) {
+        const usageData = await usageRes.json();
+        if (usageData.ok && usageData.data && usageData.data.remaining <= 0) {
+          setFormError("You've reached your monthly analysis limit. Please upgrade your plan to continue.");
+          setLoading(false);
+          // Redirect to pricing after a short delay
+          setTimeout(() => {
+            router.push("/pricing?outOfCredits=true");
+          }, 2000);
+          return;
+        }
       }
 
       const res = await fetch("/api/viability", {
@@ -121,7 +160,7 @@ export default function ProjectDetailsPage() {
       // Navigate to report page
       router.push(`/projects/${projectId}/report`);
     } catch (e: any) {
-      alert(`Error: ${e.message}`);
+      setFormError(`Error: ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -140,7 +179,11 @@ export default function ProjectDetailsPage() {
   return (
     <main className="max-w-2xl mx-auto space-y-6 p-6">
       <div>
-        <h1 className="text-3xl font-bold">Step 2: Enter Details</h1>
+        <h1 className="text-3xl font-bold">
+          {project?.title 
+            ? `Step 2: Enter Details for ${project.title}`
+            : "Step 2: Enter Details"}
+        </h1>
         <p className="text-gray-600 mt-2">
           Provide additional details about your business idea to generate a comprehensive viability report
         </p>
@@ -159,6 +202,20 @@ export default function ProjectDetailsPage() {
           >
             Retry
           </button>
+        </div>
+      )}
+
+      {formError && (
+        <div className="rounded-md bg-red-50 border border-red-200 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-800">{formError}</p>
+            <button
+              onClick={() => setFormError(null)}
+              className="text-red-600 hover:text-red-800"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 

@@ -42,14 +42,26 @@ export class OpenAiProvider implements AiProvider {
     if (ragContext && ragContext.length > 0) {
       promptParts.push(
         ``,
-        `--- Context from Market Research ---`,
-        `The following information was extracted from competitor websites, market reports, and industry research:`,
+        `--- CRITICAL: Market Research Context ---`,
+        `The following information was extracted from competitor websites, market reports, and industry research.`,
+        `YOU MUST USE THIS DATA EXTENSIVELY:`,
+        ``,
+        `1. Extract financial metrics (pricing, margins, CAC, LTV) from competitor data`,
+        `2. Use market size figures directly from reports when available`,
+        `3. Base your confidence score on how well the business idea aligns with market data`,
+        `4. Reference competitor strategies and market trends in your analysis`,
+        `5. If RAG data shows different numbers than you might estimate, TRUST THE RAG DATA`,
         ``,
         ragContext,
         ``,
-        `--- End of Context ---`,
+        `--- End of Market Research Context ---`,
         ``,
-        `Use the above context to inform your analysis with real market data, competitor insights, and industry trends.`
+        `IMPORTANT: When RAG context is provided, prioritize it over general assumptions. Extract specific numbers, pricing, margins, and market data from the context above. If the context contradicts optimistic estimates, use the more conservative RAG-based numbers.`
+      );
+    } else {
+      promptParts.push(
+        ``,
+        `NOTE: No market research context is available. Use conservative industry benchmarks and note limitations in your analysis.`
       );
     }
 

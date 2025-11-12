@@ -4,18 +4,18 @@ import { ReactNode } from "react";
 import AuthButtons from "@/components/auth/AuthButtons";
 
 export const metadata: Metadata = {
-  title: "Biz Viability - AI-Powered Business Viability Calculator",
+  title: "Startup Gauge - AI-Powered Business Viability Calculator",
   description: "Validate your business ideas with AI-powered market research, competitor analysis, and comprehensive viability reports. Get data-driven insights to make informed decisions.",
   keywords: ["business viability", "market research", "AI analysis", "business validation", "startup analysis"],
-  authors: [{ name: "Biz Viability" }],
+  authors: [{ name: "Startup Gauge" }],
   openGraph: {
-    title: "Biz Viability - AI-Powered Business Viability Calculator",
+    title: "Startup Gauge - AI-Powered Business Viability Calculator",
     description: "Validate your business ideas with AI-powered market research and comprehensive viability reports.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Biz Viability - AI-Powered Business Viability Calculator",
+    title: "Startup Gauge - AI-Powered Business Viability Calculator",
     description: "Validate your business ideas with AI-powered market research and comprehensive viability reports.",
   },
 };
@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-screen bg-white text-gray-900 antialiased">
         <div className="mx-auto max-w-6xl px-4 py-6">
           <header className="mb-6 flex items-center justify-between">
-            <a href="/" className="font-semibold text-xl hover:opacity-80 transition-opacity">Biz Viability</a>
+            <a href="/" className="font-semibold text-xl hover:opacity-80 transition-opacity">Startup Gauge</a>
             <AuthButtons />
           </header>
           {children}

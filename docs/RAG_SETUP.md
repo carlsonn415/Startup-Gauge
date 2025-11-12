@@ -41,7 +41,7 @@ SELECT * FROM pg_extension WHERE extname = 'vector';
 ## Step 2: Run Database Migration
 
 ```bash
-cd /Users/nathan/projects/Business-Viability-Calculator
+cd /Users/nathan/projects/startup-gauge
 npx prisma migrate dev --name add_rag_models
 npx prisma generate
 ```
@@ -141,7 +141,7 @@ RagIngestionWorkerFunction = arn:aws:lambda:us-east-1:123456789:function:rag-ing
 
 ## Step 6: Update Next.js Environment Variables
 
-Add these to `/Users/nathan/projects/biz-viability/.env`:
+Add these to `/Users/nathan/projects/startup-gauge/.env`:
 
 ```env
 # AWS Lambda

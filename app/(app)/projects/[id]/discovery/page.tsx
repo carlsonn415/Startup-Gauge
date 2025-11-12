@@ -23,6 +23,7 @@ export default function DiscoveryPage() {
   const [ingesting, setIngesting] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch project details to get the business idea
   useEffect(() => {
@@ -43,7 +44,8 @@ export default function DiscoveryPage() {
 
         if (res.ok) {
           const data = await res.json();
-          setBusinessIdea(data.project?.businessIdea || "");
+          // Use description if available, otherwise fall back to businessIdea or title
+          setBusinessIdea(data.project?.description || data.project?.businessIdea || data.project?.title || "");
         }
       } catch (err) {
         console.error("Failed to fetch project:", err);
@@ -78,7 +80,7 @@ export default function DiscoveryPage() {
           if (data.job.status === "completed") {
             // Analysis complete, user can continue
           } else if (data.job.status === "failed") {
-            alert("Analysis failed. Please try again.");
+            setError("Analysis failed. Please try again.");
           }
         }
       } catch (err) {
@@ -91,18 +93,19 @@ export default function DiscoveryPage() {
 
   async function handleDiscover() {
     if (!businessIdea.trim()) {
-      alert("Business idea is required");
+      setError("Business idea is required");
       return;
     }
 
     setDiscovering(true);
+    setError(null);
     try {
       const { fetchAuthSession } = await import("aws-amplify/auth");
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
-        alert("Please sign in to discover URLs");
+        setError("Please sign in to discover URLs");
         setDiscovering(false);
         return;
       }
@@ -124,11 +127,11 @@ export default function DiscoveryPage() {
         const allUrls = new Set<string>(data.urls.map((u: DiscoveredUrl) => u.url));
         setSelectedUrls(allUrls);
       } else {
-        alert(data.error || "Failed to discover URLs");
+        setError(data.error || "Failed to discover URLs");
       }
     } catch (err: any) {
       console.error("Discovery error:", err);
-      alert(err.message);
+      setError(err.message);
     } finally {
       setDiscovering(false);
     }
@@ -136,18 +139,19 @@ export default function DiscoveryPage() {
 
   async function handleAnalyze() {
     if (selectedUrls.size === 0) {
-      alert("Please select at least one URL to analyze");
+      setError("Please select at least one URL to analyze");
       return;
     }
 
     setIngesting(true);
+    setError(null);
     try {
       const { fetchAuthSession } = await import("aws-amplify/auth");
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
-        alert("Please sign in to analyze URLs");
+        setError("Please sign in to analyze URLs");
         setIngesting(false);
         return;
       }
@@ -172,11 +176,11 @@ export default function DiscoveryPage() {
         setJobId(data.jobId);
         setJobStatus(data.status);
       } else {
-        alert(data.error || "Failed to start analysis");
+        setError(data.error || "Failed to start analysis");
       }
     } catch (err: any) {
       console.error("Analysis error:", err);
-      alert(err.message);
+      setError(err.message);
     } finally {
       setIngesting(false);
     }
@@ -190,6 +194,16 @@ export default function DiscoveryPage() {
       newSelected.add(url);
     }
     setSelectedUrls(newSelected);
+  }
+
+  function toggleAllUrls() {
+    if (selectedUrls.size === urls.length) {
+      // Unselect all
+      setSelectedUrls(new Set());
+    } else {
+      // Select all
+      setSelectedUrls(new Set(urls.map((u) => u.url)));
+    }
   }
 
   function getCategoryIcon(category: string) {
@@ -232,6 +246,20 @@ export default function DiscoveryPage() {
           Find competitors and market research for your business idea
         </p>
       </div>
+
+      {error && (
+        <div className="rounded-md bg-red-50 border border-red-200 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-800">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-600 hover:text-red-800"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {urls.length === 0 ? (
         <div className="space-y-4">
@@ -308,12 +336,23 @@ export default function DiscoveryPage() {
 
           <div className="flex gap-3">
             <button
+              className="rounded-md border border-gray-300 px-4 py-3 hover:bg-gray-50 text-sm"
+              onClick={toggleAllUrls}
+            >
+              {selectedUrls.size === urls.length ? "Unselect All" : "Select All"}
+            </button>
+          </div>
+
+          <div className="flex gap-3">
+            <button
               className="flex-1 rounded-md bg-black px-4 py-3 text-white hover:opacity-90 disabled:opacity-50"
               onClick={handleAnalyze}
               disabled={ingesting || selectedUrls.size === 0}
             >
               {ingesting
-                ? "Starting Analysis..."
+                ? "Analyzing selected resources... This may take a few minutes."
+                : jobStatus === "processing"
+                ? "Analyzing selected resources... This may take a few minutes."
                 : `Analyze Selected URLs (${selectedUrls.size})`}
             </button>
 
@@ -328,12 +367,10 @@ export default function DiscoveryPage() {
             </button>
           </div>
 
-          {jobStatus && jobStatus !== "completed" && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-              <p className="text-sm text-yellow-900">
-                {jobStatus === "processing" && "Analyzing selected resources... This may take a few minutes."}
-                {jobStatus === "pending" && "Analysis queued. Starting soon..."}
-                {jobStatus === "failed" && "Analysis failed. Please try again."}
+          {jobStatus && jobStatus === "failed" && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <p className="text-sm text-red-900">
+                Analysis failed. Please try again.
               </p>
             </div>
           )}

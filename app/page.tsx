@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import { getCurrentUser, fetchAuthSession, signInWithRedirect } from "aws-amplify/auth";
 import { configureAmplify } from "@/lib/auth/amplifyClient";
+import { getAndClearRedirectDestination, setRedirectDestination } from "@/lib/auth/redirectHelpers";
 
 interface Project {
   id: string;
@@ -70,6 +71,8 @@ export default function HomePage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Project | null>(null);
 
   useEffect(() => {
     configureAmplify();
@@ -78,6 +81,13 @@ export default function HomePage() {
         await getCurrentUser();
         setIsAuthenticated(true);
         setCheckingAuth(false);
+        
+        // Check for redirect destination after sign-in
+        const redirectPath = getAndClearRedirectDestination();
+        if (redirectPath) {
+          router.push(redirectPath);
+          return;
+        }
         
         // Fetch projects
         const session = await fetchAuthSession();
@@ -103,7 +113,7 @@ export default function HomePage() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [router]);
 
   const handleSuccess = () => {
     setShowSuccess(true);
@@ -125,21 +135,22 @@ export default function HomePage() {
     }
   }
 
+  function handleDeleteClick(project: Project) {
+    setDeleteConfirm(project);
+  }
+
+  function handleCancelDelete() {
+    setDeleteConfirm(null);
+  }
+
   async function handleDeleteProject(project: Project) {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${project.title}"? This action cannot be undone and all project data will be permanently deleted.`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
-        alert("Please sign in to delete projects");
+        setError("Please sign in to delete projects");
+        setDeleteConfirm(null);
         return;
       }
 
@@ -153,12 +164,16 @@ export default function HomePage() {
       if (data.ok) {
         // Remove project from local state
         setProjects(projects.filter((p) => p.id !== project.id));
+        setDeleteConfirm(null);
+        setError(null);
       } else {
-        alert(data.error || "Failed to delete project");
+        setError(data.error || "Failed to delete project");
+        setDeleteConfirm(null);
       }
     } catch (err: any) {
       console.error("Delete error:", err);
-      alert(`Error: ${err.message}`);
+      setError(`Error: ${err.message}`);
+      setDeleteConfirm(null);
     }
   }
 
@@ -199,6 +214,7 @@ export default function HomePage() {
                   await getCurrentUser();
                   router.push("/projects/new/discovery");
                 } catch {
+                  setRedirectDestination("/projects/new/discovery");
                   await signInWithRedirect();
                 }
               }}
@@ -206,12 +222,20 @@ export default function HomePage() {
             >
               Get Started for Free
             </button>
-            <a
-              href="/pricing"
+            <button
+              onClick={async () => {
+                try {
+                  await getCurrentUser();
+                  router.push("/pricing");
+                } catch {
+                  setRedirectDestination("/pricing");
+                  await signInWithRedirect();
+                }
+              }}
               className="inline-flex items-center justify-center rounded-md border border-gray-300 px-8 py-3 hover:bg-gray-50 text-lg font-medium"
             >
               View Pricing
-            </a>
+            </button>
           </div>
         </section>
 
@@ -292,6 +316,7 @@ export default function HomePage() {
                     await getCurrentUser();
                     router.push("/projects/new/discovery");
                   } catch {
+                    setRedirectDestination("/projects/new/discovery");
                     await signInWithRedirect();
                   }
                 }}
@@ -316,6 +341,7 @@ export default function HomePage() {
                     await getCurrentUser();
                     router.push("/pricing");
                   } catch {
+                    setRedirectDestination("/pricing");
                     await signInWithRedirect();
                   }
                 }}
@@ -339,6 +365,7 @@ export default function HomePage() {
                     await getCurrentUser();
                     router.push("/pricing");
                   } catch {
+                    setRedirectDestination("/pricing");
                     await signInWithRedirect();
                   }
                 }}
@@ -363,6 +390,7 @@ export default function HomePage() {
                   await getCurrentUser();
                   router.push("/projects/new/discovery");
                 } catch {
+                  setRedirectDestination("/projects/new/discovery");
                   await signInWithRedirect();
                 }
               }}
@@ -389,25 +417,65 @@ export default function HomePage() {
           </p>
         </div>
       )}
-      
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Business Viability Calculator</h1>
-          <p className="text-gray-600 mt-2">
-            Analyze the viability of your business ideas with AI-powered market research
-          </p>
+
+      {error && (
+        <div className="rounded-md bg-red-50 border border-red-200 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-800">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-600 hover:text-red-800"
+            >
+              ✕
+            </button>
+          </div>
         </div>
-        {!checkingAuth && !loading && isAuthenticated && projects.length > 0 && (
-          <button
-            className="inline-flex items-center rounded-md bg-black px-4 py-2 text-white hover:opacity-90"
-            onClick={() => {
-              router.push("/projects/new/discovery");
-            }}
-          >
-            New Project
-          </button>
-        )}
-      </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete "{deleteConfirm.title}"? This action cannot be undone and all project data will be permanently deleted.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleCancelDelete}
+                className="px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteProject(deleteConfirm)}
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!checkingAuth && !loading && isAuthenticated && (
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xl text-gray-600">
+              Analyze the viability of your business ideas with AI-powered market research
+            </p>
+          </div>
+          {projects.length > 0 && (
+            <button
+              className="inline-flex items-center rounded-md bg-black px-4 py-2 text-white hover:opacity-90"
+              onClick={() => {
+                router.push("/projects/new/discovery");
+              }}
+            >
+              New Project
+            </button>
+          )}
+        </div>
+      )}
 
       {checkingAuth || loading ? (
         <div className="flex items-center justify-center py-12">
@@ -416,21 +484,22 @@ export default function HomePage() {
       ) : projects.length === 0 ? (
         <div className="text-center py-12 border rounded-lg">
           <p className="text-gray-600 mb-4">No projects yet.</p>
-          <button
-            className="inline-flex items-center rounded-md bg-black px-4 py-2 text-white hover:opacity-90"
-            onClick={async () => {
-              try {
-                await getCurrentUser();
-                // User is authenticated, navigate to new project
-                router.push("/projects/new/discovery");
-              } catch {
-                // User is not authenticated, redirect to sign in
-                await signInWithRedirect();
-              }
-            }}
-          >
-            Start Your First Project
-          </button>
+            <button
+              className="inline-flex items-center rounded-md bg-black px-4 py-2 text-white hover:opacity-90"
+              onClick={async () => {
+                try {
+                  await getCurrentUser();
+                  // User is authenticated, navigate to new project
+                  router.push("/projects/new/discovery");
+                } catch {
+                  // User is not authenticated, redirect to sign in
+                  setRedirectDestination("/projects/new/discovery");
+                  await signInWithRedirect();
+                }
+              }}
+            >
+              Start Your First Project
+            </button>
         </div>
       ) : (
         <div className="space-y-6">
@@ -449,7 +518,12 @@ export default function HomePage() {
                         onClick={() => handleProjectClick(project)}
                       >
                         <h3 className="font-medium">{project.title}</h3>
-                        <p className="text-sm text-gray-600 mt-1">
+                        {project.description && (
+                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                            {project.description}
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-500 mt-1">
                           Confidence Score: Not Yet Generated
                         </p>
                         <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
@@ -465,7 +539,7 @@ export default function HomePage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteProject(project);
+                            handleDeleteClick(project);
                           }}
                           className="text-red-600 hover:text-red-800 text-sm px-2 py-1 rounded hover:bg-red-50"
                           title="Delete project"
@@ -495,7 +569,12 @@ export default function HomePage() {
                         onClick={() => handleProjectClick(project)}
                       >
                         <h3 className="font-medium">{project.title}</h3>
-                        <p className="text-sm text-gray-600 mt-1">
+                        {project.description && (
+                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                            {project.description}
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-500 mt-1">
                           Confidence Score: {project.confidenceScore !== null ? `${project.confidenceScore}%` : "Not Available"}
                         </p>
                         <p className="text-xs text-gray-500 mt-2">
@@ -509,7 +588,7 @@ export default function HomePage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteProject(project);
+                            handleDeleteClick(project);
                           }}
                           className="text-red-600 hover:text-red-800 text-sm px-2 py-1 rounded hover:bg-red-50"
                           title="Delete project"

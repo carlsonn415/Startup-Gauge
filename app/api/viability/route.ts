@@ -3,7 +3,7 @@ import { ViabilityInputSchema } from "@/lib/ai/schemas";
 import { OpenAiProvider } from "@/lib/ai/providers/openai";
 import { prisma } from "@/lib/db/prisma";
 import { verifyAuthHeader } from "@/lib/auth/verifyJwt";
-import { checkAndIncrementUsage } from "@/lib/stripe/checkUsage";
+import { checkUsage, incrementUsage } from "@/lib/stripe/checkUsage";
 import { searchSimilarChunks, hasIngestedDocuments } from "@/lib/rag/vectorSearch";
 import { errorResponse, successResponse, handleApiError } from "@/lib/api/errors";
 
@@ -42,8 +42,8 @@ export async function POST(req: NextRequest) {
       create: { email: userEmail },
     });
     
-    // Check usage limits
-    const usageCheck = await checkAndIncrementUsage(user.id);
+    // Check usage limits (but don't increment yet - only increment on success)
+    const usageCheck = await checkUsage(user.id);
     if (!usageCheck.allowed) {
       return errorResponse(
         `You've reached your monthly limit of ${usageCheck.limit} analyses. Upgrade your plan for more analyses.`,
@@ -82,10 +82,11 @@ export async function POST(req: NextRequest) {
       const hasDocuments = await hasIngestedDocuments(existingProject.id);
       if (hasDocuments) {
         console.log(`Retrieving RAG context for project ${existingProject.id}`);
+        // Retrieve more chunks for better financial and market data coverage
         const searchResults = await searchSimilarChunks(
           existingProject.id,
           input.idea,
-          5 // Top 5 most relevant chunks
+          10 // Top 10 most relevant chunks for comprehensive analysis
         );
 
         if (searchResults.length > 0) {
@@ -142,6 +143,9 @@ export async function POST(req: NextRequest) {
       data: { status: "completed" },
     });
 
+    // Only increment usage after successful completion
+    const usageResult = await incrementUsage(user.id);
+
     return successResponse(output, 200, {
       model,
       promptTokens,
@@ -150,8 +154,8 @@ export async function POST(req: NextRequest) {
       projectId: project.id,
       analysisId: analysis.id,
       usage: {
-        remaining: usageCheck.remaining,
-        limit: usageCheck.limit,
+        remaining: usageResult.remaining,
+        limit: usageResult.limit,
       },
     });
   } catch (err: unknown) {

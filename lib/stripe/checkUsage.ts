@@ -1,11 +1,10 @@
 import { prisma } from "@/lib/db/prisma";
 import { PLANS } from "@/lib/stripe/plans";
 
-export async function checkAndIncrementUsage(userId: string): Promise<{
-  allowed: boolean;
-  remaining: number;
-  limit: number;
-}> {
+/**
+ * Get or create usage meter and determine user's plan
+ */
+async function getUsageMeter(userId: string) {
   const period = new Date().toISOString().slice(0, 7); // YYYY-MM
 
   // Get user's subscription
@@ -48,6 +47,18 @@ export async function checkAndIncrementUsage(userId: string): Promise<{
     });
   }
 
+  return { meter, plan };
+}
+
+/**
+ * Check if user has remaining usage without incrementing
+ */
+export async function checkUsage(userId: string): Promise<{
+  allowed: boolean;
+  remaining: number;
+  limit: number;
+}> {
+  const { meter } = await getUsageMeter(userId);
   const remaining = meter.included - meter.consumed;
   console.log(`Usage check: ${meter.consumed}/${meter.included} used, ${remaining} remaining`);
   
@@ -55,13 +66,44 @@ export async function checkAndIncrementUsage(userId: string): Promise<{
     return { allowed: false, remaining: 0, limit: meter.included };
   }
 
+  return { allowed: true, remaining, limit: meter.included };
+}
+
+/**
+ * Increment usage meter (only call after successful completion)
+ */
+export async function incrementUsage(userId: string): Promise<{
+  remaining: number;
+  limit: number;
+}> {
+  const { meter } = await getUsageMeter(userId);
+  
   // Increment usage
-  await prisma.usageMeter.update({
+  const updated = await prisma.usageMeter.update({
     where: { id: meter.id },
     data: { consumed: { increment: 1 } },
   });
 
-  console.log(`Usage incremented: now ${meter.consumed + 1}/${meter.included}`);
-  return { allowed: true, remaining: remaining - 1, limit: meter.included };
+  const remaining = updated.included - updated.consumed;
+  console.log(`Usage incremented: now ${updated.consumed}/${updated.included}, ${remaining} remaining`);
+  return { remaining, limit: updated.included };
+}
+
+/**
+ * @deprecated Use checkUsage() and incrementUsage() separately instead
+ * Check and increment usage in one call (for backwards compatibility)
+ */
+export async function checkAndIncrementUsage(userId: string): Promise<{
+  allowed: boolean;
+  remaining: number;
+  limit: number;
+}> {
+  const check = await checkUsage(userId);
+  if (!check.allowed) {
+    return check;
+  }
+  
+  const result = await incrementUsage(userId);
+  return { allowed: true, ...result };
 }
 

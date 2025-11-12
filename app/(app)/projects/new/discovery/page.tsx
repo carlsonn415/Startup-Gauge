@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser, fetchAuthSession, signInWithRedirect } from "aws-amplify/auth";
 import { configureAmplify } from "@/lib/auth/amplifyClient";
+import { setRedirectDestination, getAndClearRedirectDestination } from "@/lib/auth/redirectHelpers";
 
 interface DiscoveredUrl {
   url: string;
@@ -16,7 +17,8 @@ interface DiscoveredUrl {
 export default function NewProjectDiscoveryPage() {
   const router = useRouter();
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [businessIdea, setBusinessIdea] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [businessDescription, setBusinessDescription] = useState("");
   const [discovering, setDiscovering] = useState(false);
   const [urls, setUrls] = useState<DiscoveredUrl[]>([]);
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
@@ -24,15 +26,58 @@ export default function NewProjectDiscoveryPage() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     configureAmplify();
     (async () => {
       try {
         await getCurrentUser();
+        
+        // Check for redirect destination after sign-in (shouldn't happen here, but handle it)
+        const redirectPath = getAndClearRedirectDestination();
+        if (redirectPath && redirectPath !== "/projects/new/discovery") {
+          router.push(redirectPath);
+          return;
+        }
+        
+        // Check usage limits before allowing new project
+        const session = await fetchAuthSession();
+        const idToken = session.tokens?.idToken?.toString();
+        
+        if (!idToken) {
+          setRedirectDestination("/projects/new/discovery");
+          await signInWithRedirect();
+          return;
+        }
+        
+        const usageRes = await fetch("/api/user/usage", {
+          headers: { authorization: `Bearer ${idToken}` },
+        });
+        
+        if (!usageRes.ok) {
+          console.error("Failed to check usage:", usageRes.status);
+          setCheckingAuth(false);
+          return;
+        }
+        
+        const usageData = await usageRes.json();
+        console.log("Usage check result:", usageData);
+        
+        if (usageData.ok && usageData.data) {
+          // If no remaining analyses, redirect to pricing page
+          if (usageData.data.remaining <= 0) {
+            console.log("User out of credits, redirecting to pricing");
+            router.push("/pricing?outOfCredits=true");
+            return;
+          }
+        }
+        
         setCheckingAuth(false);
-      } catch {
+      } catch (err) {
+        console.error("Error checking usage:", err);
         // User is not authenticated, redirect to sign in
+        setRedirectDestination("/projects/new/discovery");
         await signInWithRedirect();
       }
     })();
@@ -65,7 +110,7 @@ export default function NewProjectDiscoveryPage() {
               router.push(`/projects/${projectId}/details`);
             }
           } else if (data.job.status === "failed") {
-            alert("Analysis failed. Please try again.");
+            setError("Analysis failed. Please try again.");
           }
         }
       } catch (err) {
@@ -77,18 +122,24 @@ export default function NewProjectDiscoveryPage() {
   }, [jobId, analysisStatus, projectId, router]);
 
   async function handleDiscover() {
-    if (!businessIdea.trim()) {
-      alert("Business idea is required");
+    if (!businessName.trim()) {
+      setError("Business name is required");
+      return;
+    }
+
+    if (!businessDescription.trim()) {
+      setError("Business description is required");
       return;
     }
 
     setDiscovering(true);
+    setError(null);
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
-        alert("Please sign in");
+        setError("Please sign in");
         setDiscovering(false);
         return;
       }
@@ -102,8 +153,8 @@ export default function NewProjectDiscoveryPage() {
             authorization: `Bearer ${idToken}`,
           },
           body: JSON.stringify({
-            title: businessIdea.slice(0, 60),
-            description: businessIdea,
+            title: businessName.trim(),
+            description: businessDescription.trim(),
           }),
         });
 
@@ -115,14 +166,14 @@ export default function NewProjectDiscoveryPage() {
         }
       }
 
-      // Discover URLs
+      // Discover URLs using business description as the search query
       const res = await fetch("/api/discovery/urls", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           authorization: `Bearer ${idToken}`,
         },
-        body: JSON.stringify({ businessIdea }),
+        body: JSON.stringify({ businessIdea: businessDescription }),
       });
 
       const data = await res.json();
@@ -132,11 +183,11 @@ export default function NewProjectDiscoveryPage() {
         const allUrls = new Set<string>(data.urls.map((u: DiscoveredUrl) => u.url));
         setSelectedUrls(allUrls);
       } else {
-        alert(data.error || "Failed to discover URLs");
+        setError(data.error || "Failed to discover URLs");
       }
     } catch (err: any) {
       console.error("Discovery error:", err);
-      alert(err.message);
+      setError(err.message);
     } finally {
       setDiscovering(false);
     }
@@ -144,22 +195,23 @@ export default function NewProjectDiscoveryPage() {
 
   async function handleAnalyze() {
     if (!projectId) {
-      alert("Project not created. Please discover URLs first.");
+      setError("Project not created. Please discover URLs first.");
       return;
     }
 
     if (selectedUrls.size === 0) {
-      alert("Please select at least one URL to analyze");
+      setError("Please select at least one URL to analyze");
       return;
     }
 
     setAnalyzing(true);
+    setError(null);
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
 
       if (!idToken) {
-        alert("Please sign in");
+        setError("Please sign in");
         setAnalyzing(false);
         return;
       }
@@ -184,11 +236,11 @@ export default function NewProjectDiscoveryPage() {
         setJobId(data.jobId);
         setAnalysisStatus(data.status);
       } else {
-        alert(data.error || "Failed to start analysis");
+        setError(data.error || "Failed to start analysis");
       }
     } catch (err: any) {
       console.error("Analysis error:", err);
-      alert(err.message);
+      setError(err.message);
     } finally {
       setAnalyzing(false);
     }
@@ -202,6 +254,16 @@ export default function NewProjectDiscoveryPage() {
       newSelected.add(url);
     }
     setSelectedUrls(newSelected);
+  }
+
+  function toggleAllUrls() {
+    if (selectedUrls.size === urls.length) {
+      // Unselect all
+      setSelectedUrls(new Set());
+    } else {
+      // Select all
+      setSelectedUrls(new Set(urls.map((u) => u.url)));
+    }
   }
 
   function getCategoryIcon(category: string) {
@@ -255,22 +317,46 @@ export default function NewProjectDiscoveryPage() {
         </p>
       </div>
 
+      {error && (
+        <div className="rounded-md bg-red-50 border border-red-200 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-800">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-600 hover:text-red-800"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {urls.length === 0 ? (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Business Idea</label>
+            <label className="block text-sm font-medium mb-2">Business Name</label>
+            <input
+              type="text"
+              className="w-full border rounded-md p-3"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="e.g., EcoPet Box"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Business Description</label>
             <textarea
               className="w-full border rounded-md p-3 min-h-[100px]"
-              value={businessIdea}
-              onChange={(e) => setBusinessIdea(e.target.value)}
-              placeholder="e.g., A subscription box service for eco-friendly pet products"
+              value={businessDescription}
+              onChange={(e) => setBusinessDescription(e.target.value)}
+              placeholder="Describe your business idea in detail. For example: A subscription box service for eco-friendly pet products targeting environmentally conscious pet owners..."
             />
           </div>
 
           <button
             className="w-full rounded-md bg-black px-4 py-3 text-white hover:opacity-90 disabled:opacity-50"
             onClick={handleDiscover}
-            disabled={discovering || !businessIdea.trim()}
+            disabled={discovering || !businessName.trim() || !businessDescription.trim()}
           >
             {discovering ? "Discovering..." : "Discover Resources"}
           </button>
@@ -330,14 +416,23 @@ export default function NewProjectDiscoveryPage() {
 
           <div className="flex gap-3">
             <button
+              className="rounded-md border border-gray-300 px-4 py-3 hover:bg-gray-50 text-sm"
+              onClick={toggleAllUrls}
+            >
+              {selectedUrls.size === urls.length ? "Unselect All" : "Select All"}
+            </button>
+          </div>
+
+          <div className="flex gap-3">
+            <button
               className="flex-1 rounded-md bg-black px-4 py-3 text-white hover:opacity-90 disabled:opacity-50"
               onClick={handleAnalyze}
               disabled={analyzing || selectedUrls.size === 0 || analysisStatus === "processing"}
             >
               {analyzing
-                ? "Starting Analysis..."
+                ? "Analyzing selected resources... This may take a few minutes."
                 : analysisStatus === "processing"
-                ? "Analyzing Resources..."
+                ? "Analyzing selected resources... This may take a few minutes."
                 : `Analyze Selected URLs (${selectedUrls.size})`}
             </button>
 
@@ -352,12 +447,10 @@ export default function NewProjectDiscoveryPage() {
             </button>
           </div>
 
-          {analysisStatus && analysisStatus !== "completed" && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-              <p className="text-sm text-yellow-900">
-                {analysisStatus === "processing" && "Analyzing selected resources... This may take a few minutes."}
-                {analysisStatus === "pending" && "Analysis queued. Starting soon..."}
-                {analysisStatus === "failed" && "Analysis failed. Please try again."}
+          {analysisStatus && analysisStatus === "failed" && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <p className="text-sm text-red-900">
+                Analysis failed. Please try again.
               </p>
             </div>
           )}

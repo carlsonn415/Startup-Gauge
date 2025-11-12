@@ -1,6 +1,6 @@
 # API Reference
 
-> Complete API documentation for Business Viability Calculator
+> Complete API documentation for Startup Gauge
 
 ---
 
