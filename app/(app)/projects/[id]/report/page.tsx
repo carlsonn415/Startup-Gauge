@@ -116,7 +116,7 @@ export default function ProjectReportPage() {
           </p>
           <button
             onClick={() => router.push(`/projects/${projectId}/details`)}
-            className="mt-4 rounded-md bg-black px-4 py-2 text-white"
+            className="mt-4 rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700 transition-colors shadow-md hover:shadow-lg"
           >
             Generate Report
           </button>

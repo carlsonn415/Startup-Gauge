@@ -520,12 +520,12 @@ export default function HomePage() {
         <div className="space-y-6">
           {inProgressProjects.length > 0 && (
             <div>
-              <h2 className="text-xl font-semibold mb-3">In Progress</h2>
+              <h2 className="text-xl font-semibold mb-3 text-slate-800">In Progress</h2>
               <div className="space-y-2">
                 {inProgressProjects.map((project) => (
                   <div
                     key={project.id}
-                    className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-all cursor-pointer"
+                    className="border border-gray-200 rounded-lg p-4 bg-white shadow-soft hover:shadow-lg transition-all cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       <div 
@@ -571,12 +571,12 @@ export default function HomePage() {
 
           {completedProjects.length > 0 && (
             <div>
-              <h2 className="text-xl font-semibold mb-3">Completed</h2>
+              <h2 className="text-xl font-semibold mb-3 text-slate-800">Completed</h2>
               <div className="space-y-2">
                 {completedProjects.map((project) => (
                   <div
                     key={project.id}
-                    className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-all cursor-pointer"
+                    className="border border-gray-200 rounded-lg p-4 bg-white shadow-soft hover:shadow-lg transition-all cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       <div 
