@@ -20,8 +20,24 @@ export async function POST(req: NextRequest) {
     const { planId } = body;
 
     const plan = PLANS[planId];
-    if (!plan || !plan.stripePriceId) {
-      return NextResponse.json({ ok: false, error: "Invalid plan" }, { status: 400 });
+    if (!plan) {
+      return NextResponse.json({ 
+        ok: false, 
+        error: `Invalid plan ID: ${planId}. Valid plans are: ${Object.keys(PLANS).filter(k => k !== "starter-to-pro-upgrade").join(", ")}` 
+      }, { status: 400 });
+    }
+
+    if (!plan.stripePriceId) {
+      const envVarName = planId === "starter" 
+        ? "STRIPE_PRICE_STARTER" 
+        : planId === "pro" 
+        ? "STRIPE_PRICE_PRO" 
+        : "STRIPE_PRICE_STARTER_TO_PRO_UPGRADE";
+      
+      return NextResponse.json({ 
+        ok: false, 
+        error: `Plan "${plan.name}" is not configured. Please set the ${envVarName} environment variable with a valid Stripe price ID.` 
+      }, { status: 500 });
     }
 
     // Get or create user
