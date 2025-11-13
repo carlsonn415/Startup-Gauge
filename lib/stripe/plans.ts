@@ -70,6 +70,8 @@ export function getPlans(): Record<string, Plan> {
       stripePriceId = process.env.STRIPE_PRICE_PRO || "";
     } else if (planDef.id === "starter-to-pro-upgrade") {
       stripePriceId = process.env.STRIPE_PRICE_STARTER_TO_PRO_UPGRADE || "";
+    } else {
+      stripePriceId = "test_price_id";
     }
     // free plan has no stripePriceId
     
