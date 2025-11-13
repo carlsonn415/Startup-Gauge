@@ -117,7 +117,6 @@ Return ONLY valid JSON, no markdown, no code fences, no explanations.`;
       });
   } else if (version.systemPrompt.length < 200 || version.outputSchemaVersion < 2) {
     // Update incomplete prompts or old schema versions
-    console.log("Updating prompt version to v2 with improved schema...");
     version = await prisma.promptVersion.update({
       where: { id: version.id },
       data: { 

@@ -40,8 +40,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("Starting discovery for:", businessIdea);
-
     // Step 1: Generate search queries using GPT-4
     const queryPrompt = `You are a business research assistant. Generate 5-7 targeted search queries to find:
 1. Direct competitors
@@ -74,7 +72,6 @@ Example response format:
     }
 
     const { queries } = JSON.parse(queryContent) as { queries: string[] };
-    console.log("Generated queries:", queries);
 
     // Step 2: Search using Brave API
     const braveClient = new BraveSearchClient();
@@ -91,8 +88,6 @@ Example response format:
         });
       }
     }
-
-    console.log(`Found ${allResults.length} total results from Brave Search`);
 
     // Step 3: Use GPT-4 to filter and rank URLs
     const filterPrompt = `You are a business research analyst. Review these search results and identify the 10-15 most relevant URLs for competitive analysis of this business idea: "${businessIdea}"
@@ -135,7 +130,6 @@ Only return 10-15 of the most relevant URLs. Prioritize quality over quantity.`;
     }
 
     const discoveryResponse = DiscoveryResponseSchema.parse(JSON.parse(filterContent));
-    console.log(`Filtered to ${discoveryResponse.urls.length} relevant URLs`);
 
     return NextResponse.json({
       ok: true,

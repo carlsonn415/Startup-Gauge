@@ -70,10 +70,6 @@ export class OpenAiProvider implements AiProvider {
 
     const client = getClient();
     
-    // Log the system prompt to debug
-    console.log("System prompt length:", systemPrompt.length);
-    console.log("System prompt preview:", systemPrompt.substring(0, 200));
-    
     const response = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -85,14 +81,12 @@ export class OpenAiProvider implements AiProvider {
     });
 
     const content = response.choices?.[0]?.message?.content ?? "{}";
-    console.log("OpenAI raw response:", content.substring(0, 500));
     
     // Attempt to parse JSON even if wrapped in code fences
     const jsonText = content.replace(/^```(json)?/i, "").replace(/```$/i, "").trim();
     let parsed;
     try {
       parsed = JSON.parse(jsonText);
-      console.log("Parsed JSON keys:", Object.keys(parsed));
     } catch (parseError) {
       console.error("Failed to parse OpenAI response:", content);
       throw new Error(`Invalid JSON response from OpenAI: ${parseError instanceof Error ? parseError.message : "Unknown error"}`);

@@ -22,8 +22,7 @@ export async function invokeLambdaAsync(
   });
 
   try {
-    const response = await lambdaClient.send(command);
-    console.log(`Lambda ${functionName} invoked:`, response.StatusCode);
+    await lambdaClient.send(command);
   } catch (error) {
     console.error(`Failed to invoke Lambda ${functionName}:`, error);
     throw error;

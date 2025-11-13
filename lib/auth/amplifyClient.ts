@@ -69,10 +69,6 @@ export function configureAmplify() {
     });
     
     isConfigured = true;
-    console.log("Amplify configured successfully", {
-      userPoolId: userPoolId.substring(0, 10) + "...",
-      redirectUrl: baseRedirectUrl,
-    });
   } catch (error) {
     console.error("Amplify configuration error:", error);
   }

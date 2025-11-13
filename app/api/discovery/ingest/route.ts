@@ -63,8 +63,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    console.log(`Created discovery job ${job.id} for project ${projectId}`);
-
     // Invoke Lambda asynchronously
     const lambdaPayload = {
       jobId: job.id,
@@ -81,7 +79,6 @@ export async function POST(req: NextRequest) {
       });
 
       await lambdaClient.send(command);
-      console.log(`Lambda invoked for job ${job.id}`);
 
       // Update job status to processing
       await prisma.discoveryJob.update({

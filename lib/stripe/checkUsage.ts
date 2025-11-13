@@ -17,10 +17,7 @@ async function getUsageMeter(userId: string) {
     const activePlan = Object.values(PLANS).find((p) => p.stripePriceId === subscription.stripePriceId);
     if (activePlan) {
       plan = activePlan;
-      console.log(`User ${userId} has active plan: ${plan.name} (${plan.includedAnalyses} analyses)`);
     }
-  } else {
-    console.log(`User ${userId} on free plan (${PLANS.free.includedAnalyses} analyses)`);
   }
 
   // Get or create usage meter
@@ -29,7 +26,6 @@ async function getUsageMeter(userId: string) {
   });
 
   if (!meter) {
-    console.log(`Creating new usage meter for user ${userId}, period ${period}, limit ${plan.includedAnalyses}`);
     meter = await prisma.usageMeter.create({
       data: { 
         userId, 
@@ -40,7 +36,6 @@ async function getUsageMeter(userId: string) {
     });
   } else if (meter.included !== plan.includedAnalyses) {
     // Plan changed - update the limit
-    console.log(`Updating usage meter limit from ${meter.included} to ${plan.includedAnalyses}`);
     meter = await prisma.usageMeter.update({
       where: { id: meter.id },
       data: { included: plan.includedAnalyses },
@@ -60,7 +55,6 @@ export async function checkUsage(userId: string): Promise<{
 }> {
   const { meter } = await getUsageMeter(userId);
   const remaining = meter.included - meter.consumed;
-  console.log(`Usage check: ${meter.consumed}/${meter.included} used, ${remaining} remaining`);
   
   if (remaining <= 0) {
     return { allowed: false, remaining: 0, limit: meter.included };
@@ -85,7 +79,6 @@ export async function incrementUsage(userId: string): Promise<{
   });
 
   const remaining = updated.included - updated.consumed;
-  console.log(`Usage incremented: now ${updated.consumed}/${updated.included}, ${remaining} remaining`);
   return { remaining, limit: updated.included };
 }
 

@@ -66,7 +66,6 @@ async function searchAllQueries(queries: string[]): Promise<BraveSearchResult[]>
 
   for (const query of queries) {
     try {
-      console.log(`Searching Brave for: "${query}"`);
       const results = await searchBrave(query, resultsPerQuery);
       allResults.push(...results);
       
@@ -153,17 +152,9 @@ Focus on quality over quantity. Exclude generic sites, search engines, and low-v
  * Takes a business idea and returns a curated list of URLs to ingest
  */
 export async function discoverUrls(businessIdea: string): Promise<DiscoveredURL[]> {
-  console.log("Step 1: Generating search queries...");
   const queries = await generateSearchQueries(businessIdea);
-  console.log(`Generated ${queries.length} queries:`, queries);
-
-  console.log("Step 2: Searching Brave API...");
   const searchResults = await searchAllQueries(queries);
-  console.log(`Found ${searchResults.length} unique results`);
-
-  console.log("Step 3: Filtering and ranking URLs...");
   const discoveredUrls = await filterAndRankUrls(businessIdea, searchResults);
-  console.log(`Filtered to ${discoveredUrls.length} relevant URLs`);
 
   return discoveredUrls;
 }

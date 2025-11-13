@@ -39,7 +39,7 @@ Startup Gauge is a full-stack SaaS application that leverages AI to analyze busi
 - **Next.js API Routes** - Serverless API endpoints
 - **Prisma** - Type-safe ORM with PostgreSQL
 - **AWS Lambda** - Serverless document ingestion worker
-- **OpenAI API** - GPT-4 for analysis + embeddings for RAG
+- **OpenAI API** - GPT-4o-mini for analysis, GPT-4o for discovery, text-embedding-3-small for RAG
 
 ### Infrastructure
 - **Neon** - Serverless PostgreSQL with pgvector extension
@@ -62,7 +62,7 @@ Submit a business idea and receive structured analysis including:
 - 12-month financial projections
 - Confidence scoring (0-100%)
 
-**Powered by:** OpenAI GPT-4 with strict schema validation via Zod
+**Powered by:** OpenAI GPT-4o-mini with strict schema validation via Zod
 
 ### 2. RAG Discovery System
 
@@ -78,14 +78,16 @@ Enhance analyses with real market data:
 
 Three-tier pricing model:
 - **Free**: 3 analyses/month
-- **Starter ($29)**: 25 analyses/month + detailed reports
-- **Pro ($99)**: 100 analyses/month + RAG + API access
+- **Starter ($5)**: 25 analyses/month + detailed reports
+- **Pro ($15)**: 100 analyses/month + RAG + AI chat + PDF export
 
 Features:
 - Stripe Checkout integration
 - Usage metering per billing period
 - Subscription upgrade/cancel workflow
 - Webhook handling for subscription events
+- PDF export for Starter+ plans
+- AI chat with RAG context for Pro plans
 
 ### 4. Authentication & Authorization
 
@@ -108,6 +110,8 @@ Features:
 │   │   ├── discovery/      # RAG URL discovery + ingestion
 │   │   ├── checkout/       # Stripe checkout
 │   │   ├── subscription/   # Subscription management
+│   │   ├── user/          # User subscription & usage
+│   │   ├── health/        # Health check endpoint
 │   │   └── webhooks/       # Stripe webhooks
 │   ├── layout.tsx          # Root layout with auth
 │   └── page.tsx            # Landing page
@@ -133,83 +137,39 @@ Features:
 
 ## ⚙️ Setup & Installation
 
+> **For complete setup instructions, see [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)**
+
+### Quick Start
+
+1. **Clone and install:**
+   ```bash
+   git clone <repository-url>
+   cd Business-Viability-Calculator
+   npm install
+   ```
+
+2. **Set up environment variables** (see [Deployment Guide](docs/DEPLOYMENT_GUIDE.md#local-development-setup) for complete list)
+
+3. **Set up database:**
+   ```bash
+   npx prisma migrate dev
+   npx prisma generate
+   ```
+
+4. **Run development server:**
+   ```bash
+   npm run dev
+   ```
+
 ### Prerequisites
 
 - **Node.js 20+**
 - **PostgreSQL** with pgvector extension (Neon recommended)
 - **AWS Account** (for Amplify Auth + Lambda)
 - **API Keys**: OpenAI, Stripe, Brave Search
+- **AWS CLI** and **SAM CLI** (for Lambda deployment)
 
-### 1. Clone & Install
-
-```bash
-git clone <repository-url>
-cd startup-gauge
-npm install
-```
-
-### 2. Environment Variables
-
-Create `.env` file:
-
-```env
-# Database
-DATABASE_URL="postgresql://user:pass@host.neon.tech/db?sslmode=require"
-
-# OpenAI
-OPENAI_API_KEY="sk-..."
-
-# AWS (for Lambda invocation)
-IAM_AWS_ACCESS_KEY_ID="AKIA..."
-IAM_AWS_SECRET_ACCESS_KEY="..."
-IAM_AWS_REGION="us-east-2"
-RAG_LAMBDA_FUNCTION_NAME="rag-ingestion-worker"
-
-# Brave Search
-BRAVE_API_KEY="BSA..."
-
-# Stripe
-STRIPE_SECRET_KEY="sk_test_..."
-STRIPE_WEBHOOK_SECRET="whsec_..."
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
-STRIPE_PRICE_STARTER="price_..."
-STRIPE_PRICE_PRO="price_..."
-
-# AWS Amplify (Cognito)
-# Configure after setting up Amplify Auth
-```
-
-### 3. Database Setup
-
-```bash
-# Run migrations
-npx prisma migrate dev
-
-# Generate Prisma Client
-npx prisma generate
-```
-
-### 4. Deploy Lambda Worker
-
-```bash
-cd lambda/rag-ingestion-worker
-npm install
-cd ..
-
-# Deploy with AWS SAM
-sam build
-sam deploy --guided
-```
-
-See [docs/RAG_QUICKSTART.md](docs/RAG_QUICKSTART.md) for detailed Lambda setup.
-
-### 5. Run Development Server
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000)
+**See [Complete Deployment Guide](docs/DEPLOYMENT_GUIDE.md) for detailed setup instructions.**
 
 ---
 
@@ -221,6 +181,9 @@ npm run build        # Build for production
 npm run start        # Start production server
 npm run lint         # Run ESLint
 npm run eval         # Run AI prompt evaluation
+npm run seed         # Seed database with demo data
+npm run seed:reset   # Reset database (delete all data)
+npm run fix:prompt   # Update prompt version in database
 ```
 
 ---
@@ -244,41 +207,38 @@ See [prisma/schema.prisma](prisma/schema.prisma) for full schema.
 
 ## 🚢 Deployment
 
-### Quick Start
+### Complete Deployment Guide
 
-See [docs/AMPLIFY_QUICKSTART.md](docs/AMPLIFY_QUICKSTART.md) for a 15-minute deployment guide.
+**See [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) for the complete step-by-step deployment guide from scratch.**
 
-### Full Deployment Guide
-
-Complete deployment instructions are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), including:
-- AWS Amplify Hosting setup
-- Environment variable configuration
+The deployment guide covers:
+- Local development setup
+- Database configuration (Neon PostgreSQL with pgvector)
 - AWS Cognito authentication setup
-- Stripe webhook configuration
-- Lambda deployment
-- CI/CD pipeline setup
+- Stripe payment integration
+- RAG system setup (AWS Lambda)
+- AWS Amplify hosting deployment
+- Post-deployment configuration
 - Monitoring and observability
+- Troubleshooting
 
-### AWS Amplify Hosting
+### Quick Overview
 
-1. **Connect GitHub** repository in Amplify console
-2. **Configure build settings** (auto-detected from `amplify.yml`)
-3. **Add environment variables** from `.env.example`
-4. **Deploy** - Automatic on git push to main branch
-
-**See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions.**
+1. **Set up local environment** - Install dependencies, configure database
+2. **Configure AWS Cognito** - Create user pool and app client
+3. **Set up Stripe** - Create products and configure webhooks
+4. **Deploy Lambda** - RAG ingestion worker for document processing
+5. **Deploy to Amplify** - Connect GitHub, configure build, add environment variables
+6. **Post-deployment** - Update callback URLs, configure webhooks, verify deployment
 
 ---
 
 ## 📖 Documentation
 
+- **[Complete Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - **Start here!** Step-by-step guide to deploy from scratch
 - **[Architecture Overview](docs/ARCHITECTURE.md)** - System design and data flows
 - **[API Reference](docs/API_REFERENCE.md)** - Complete API endpoint documentation
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Complete AWS Amplify deployment instructions
-- **[Amplify Quick Start](docs/AMPLIFY_QUICKSTART.md)** - 15-minute deployment guide
-- **[Monitoring Guide](docs/MONITORING.md)** - Production monitoring and observability
-- **[RAG Setup Guide](docs/RAG_QUICKSTART.md)** - Lambda deployment walkthrough
-- **[RAG Implementation](docs/RAG_IMPLEMENTATION.md)** - Technical deep dive
+- **[RAG Implementation](docs/RAG_IMPLEMENTATION.md)** - Technical deep dive into RAG system
 
 ---
 
@@ -294,31 +254,16 @@ Complete deployment instructions are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 ---
 
-## 💰 Cost Breakdown
-
-**Free Tier Usage:**
-- AWS Lambda: 1M requests/month free
-- Brave Search: 2,000 searches/month free
-- Neon: 10GB storage free
-
-**Estimated Monthly Costs (Light Usage):**
-- OpenAI Embeddings: ~$1-2
-- OpenAI GPT-4: ~$5-10
-- AWS Lambda execution: ~$0.50
-- **Total: ~$7-13/month** for 50-100 analyses
-
----
-
 ## 🛣️ Roadmap
 
 - [ ] Enhanced landing page with feature showcase
 - [ ] User dashboard with analytics
-- [ ] Export reports to PDF
 - [ ] Comparative analysis (multiple ideas)
 - [ ] API access for Pro tier
 - [ ] Semantic chunking strategy
 - [ ] Support for more document types (DOCX, MD)
 - [ ] Team collaboration features
+- [ ] Advanced analytics and insights dashboard
 
 ---
 
