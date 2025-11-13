@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/client";
-import { PLANS } from "@/lib/stripe/plans";
+import { getPlans, getPlan } from "@/lib/stripe/plans";
 import { prisma } from "@/lib/db/prisma";
 import { verifyAuthHeader } from "@/lib/auth/verifyJwt";
 
@@ -19,11 +19,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { planId } = body;
 
-    const plan = PLANS[planId];
+    // Get plan dynamically at runtime to ensure environment variables are read fresh
+    const plan = getPlan(planId);
     if (!plan) {
+      const plans = getPlans();
       return NextResponse.json({ 
         ok: false, 
-        error: `Invalid plan ID: ${planId}. Valid plans are: ${Object.keys(PLANS).filter(k => k !== "starter-to-pro-upgrade").join(", ")}` 
+        error: `Invalid plan ID: ${planId}. Valid plans are: ${Object.keys(plans).filter(k => k !== "starter-to-pro-upgrade").join(", ")}` 
       }, { status: 400 });
     }
 
@@ -66,9 +68,10 @@ export async function POST(req: NextRequest) {
       const currentPriceId = currentSubscription.items.data[0]?.price.id;
       
       // Special handling for Starter to Pro upgrade from canceled subscription
-      if (planId === "pro" && currentPriceId === PLANS.starter.stripePriceId) {
+      const plans = getPlans();
+      if (planId === "pro" && currentPriceId === plans.starter.stripePriceId) {
         // Check if upgrade product is configured
-        const upgradePlan = PLANS["starter-to-pro-upgrade"];
+        const upgradePlan = plans["starter-to-pro-upgrade"];
         if (!upgradePlan.stripePriceId) {
           return NextResponse.json({ 
             ok: false, 
@@ -133,9 +136,10 @@ export async function POST(req: NextRequest) {
 
       // Special handling for Starter to Pro upgrade
       // Use the upgrade product instead of updating subscription directly
-      if (planId === "pro" && currentPriceId === PLANS.starter.stripePriceId) {
+      const plans = getPlans();
+      if (planId === "pro" && currentPriceId === plans.starter.stripePriceId) {
         // Check if upgrade product is configured
-        const upgradePlan = PLANS["starter-to-pro-upgrade"];
+        const upgradePlan = plans["starter-to-pro-upgrade"];
         if (!upgradePlan.stripePriceId) {
           return NextResponse.json({ 
             ok: false, 

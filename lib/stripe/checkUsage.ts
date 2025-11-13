@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
-import { PLANS } from "@/lib/stripe/plans";
+import { getPlans } from "@/lib/stripe/plans";
 
 /**
  * Get or create usage meter and determine user's plan
@@ -11,10 +11,11 @@ async function getUsageMeter(userId: string) {
   const subscription = await prisma.subscription.findUnique({ where: { userId } });
   const isActive = subscription?.status === "active" || subscription?.status === "trialing";
 
-  // Determine plan
-  let plan = PLANS.free;
+  // Determine plan - get plans dynamically at runtime
+  const plans = getPlans();
+  let plan = plans.free;
   if (isActive && subscription?.stripePriceId) {
-    const activePlan = Object.values(PLANS).find((p) => p.stripePriceId === subscription.stripePriceId);
+    const activePlan = Object.values(plans).find((p) => p.stripePriceId === subscription.stripePriceId);
     if (activePlan) {
       plan = activePlan;
     }
