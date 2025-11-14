@@ -38,8 +38,46 @@ export async function POST(req: NextRequest) {
       
       return NextResponse.json({ 
         ok: false, 
-        error: `Plan "${plan.stripePriceId}" is not configured. Please set the ${envVarName} environment variable with a valid Stripe price ID.` 
+        error: `Plan "${plan.name}" is not configured. Please set the ${envVarName} environment variable with a valid Stripe price ID.` 
       }, { status: 500 });
+    }
+
+    // Validate that the price exists in Stripe before proceeding
+    try {
+      await stripe.prices.retrieve(plan.stripePriceId);
+    } catch (priceError: any) {
+      const stripeError = priceError as { type?: string; message?: string; code?: string };
+      const isTestMode = process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_");
+      const isLiveMode = process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_");
+      
+      let errorMessage = `Stripe price "${plan.stripePriceId}" not found. `;
+      
+      if (stripeError.code === "resource_missing") {
+        errorMessage += `The price ID does not exist in your Stripe account. `;
+      }
+      
+      if (isTestMode && plan.stripePriceId.startsWith("price_1")) {
+        // price_1 prefix suggests live mode price
+        errorMessage += `You're using test mode keys (sk_test_) but the price ID appears to be from live mode. `;
+        errorMessage += `Please use test mode price IDs (starting with price_) or switch to live mode keys.`;
+      } else if (isLiveMode && !plan.stripePriceId.startsWith("price_1")) {
+        errorMessage += `You're using live mode keys (sk_live_) but the price ID appears to be from test mode. `;
+        errorMessage += `Please use live mode price IDs or switch to test mode keys.`;
+      } else {
+        errorMessage += `Please verify the price ID exists in your Stripe ${isTestMode ? "test" : "live"} mode account.`;
+      }
+      
+      console.error("Stripe price validation error:", {
+        priceId: plan.stripePriceId,
+        planId,
+        stripeMode: isTestMode ? "test" : isLiveMode ? "live" : "unknown",
+        error: stripeError.message || stripeError,
+      });
+      
+      return NextResponse.json({ 
+        ok: false, 
+        error: errorMessage 
+      }, { status: 400 });
     }
 
     // Get or create user
@@ -203,6 +241,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, url: session.url });
   } catch (err: unknown) {
     console.error("Checkout error:", err);
+    
+    // Handle Stripe-specific errors
+    if (err && typeof err === "object" && "type" in err) {
+      const stripeError = err as { type?: string; message?: string; code?: string };
+      
+      if (stripeError.code === "resource_missing") {
+        return NextResponse.json({ 
+          ok: false, 
+          error: `Stripe resource not found: ${stripeError.message || "The requested resource does not exist in your Stripe account. Please verify your price IDs match your Stripe account mode (test/live)."}` 
+        }, { status: 400 });
+      }
+      
+      return NextResponse.json({ 
+        ok: false, 
+        error: `Stripe error: ${stripeError.message || stripeError.type || "Unknown Stripe error"}` 
+      }, { status: 400 });
+    }
+    
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
