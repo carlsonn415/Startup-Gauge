@@ -15,6 +15,17 @@
 
 Startup Gauge is a full-stack SaaS application that leverages AI to analyze business ideas and provide comprehensive viability assessments. The platform combines structured analysis with RAG (Retrieval-Augmented Generation) to deliver data-driven insights backed by real market research.
 
+## 📸 Screenshots
+
+![Landing page hero](screenshots/SCR-20251114-jrvs.png)
+<sup>Polished landing page that highlights the value proposition and routes visitors to sign in.</sup>
+
+![Viability report detail view](screenshots/SCR-20251114-jtbd.png)
+<sup>AI-generated viability report with market sizing, roadmap, risk analysis, and financial projections.</sup>
+
+![Pricing and subscription management](screenshots/SCR-20251114-jsft.png)
+<sup>Pricing page with upgrade actions backed by live Stripe subscriptions.</sup>
+
 ### Key Features
 
 - **🤖 AI-Powered Analysis** - Generate detailed viability reports with market sizing, risk assessment, and financial projections
